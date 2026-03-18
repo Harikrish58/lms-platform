@@ -1,5 +1,7 @@
 # Learning Management System (LMS)
 
+# Project Status: **Currently under development**
+
 A modern **full-stack Learning Management System** built with **Next.js and TypeScript**.
 
 This project demonstrates **real-world development practices**, including authentication, payments, cloud storage, and CI/CD workflows. The goal is to simulate how a **production SaaS LMS platform** works while showcasing modern technologies commonly used in professional environments.
@@ -125,9 +127,5 @@ This project follows a **professional Git workflow**:
 * Automatic deployment via Vercel
 
 ---
-
-# Project Status
-
-**Currently under development**
 
 This repository is actively being built to simulate a **real-world LMS platform** and demonstrate **modern full-stack engineering practices**.
