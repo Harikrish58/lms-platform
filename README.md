@@ -1,6 +1,6 @@
 # Learning Management System (LMS)
 
-# Project Status: **Currently under development**
+## Project Status: Currently under development
 
 A modern **full-stack Learning Management System** built with **Next.js and TypeScript**.
 
