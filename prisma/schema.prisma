@@ -12,9 +12,114 @@ datasource db {
 }
 
 model User {
-  id String @id @default(uuid())
-  name String?
-  email String @unique
-  password String
+  id        String   @id @default(uuid()) // Primary key
+  name      String
+  email     String   @unique // No duplicate users
+  password  String
+  role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
+
+  // Relations (virtual fields, NOT stored in DB)
+  courses     Course[]     @relation("InstructorCourses") // Courses created by this user (as instructor)
+  enrollments Enrollment[] // Courses this user joined
+  reviews     Review[] // Reviews written by user
+  progress    Progress[] // Lesson completion tracking
+}
+
+model Course {
+  id          String   @id @default(uuid()) // Primary key
+  title       String
+  description String
+  price       Float
+  createdAt   DateTime @default(now())
+
+  // Foreign Key (stored in DB)
+  instructorId String // References User.id
+
+  // Relations
+  instructor  User         @relation("InstructorCourses", fields: [instructorId], references: [id]) // Course belongs to one instructor
+  sections    Section[] // Course → many sections
+  enrollments Enrollment[] // Users enrolled in this course
+  reviews     Review[] // Reviews for this course
+}
+
+model Section {
+  id    String @id @default(uuid()) // Primary key
+  title String
+
+  // Foreign Key
+  courseId String // References Course.id
+
+  // Relations
+  course  Course   @relation(fields: [courseId], references: [id]) // Section belongs to one course
+  lessons Lesson[] // Section → many lessons
+}
+
+model Lesson {
+  id       String @id @default(uuid()) // Primary key
+  title    String
+  videoUrl String // Stored video location (S3/Cloudinary)
+
+  // Foreign Key
+  sectionId String // References Section.id
+
+  // Relations
+  section  Section    @relation(fields: [sectionId], references: [id]) // Lesson belongs to one section
+  progress Progress[] // Users progress on this lesson
+}
+
+model Enrollment {
+  id String @id @default(uuid()) // Primary key
+
+  // Foreign Keys
+  userId   String // References User.id
+  courseId String // References Course.id
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id]) // Enrollment → one user
+  course Course @relation(fields: [courseId], references: [id]) // Enrollment → one course
+
+  @@unique([userId, courseId]) // Prevent same user enrolling twice
+}
+
+model Progress {
+  id String @id @default(uuid()) // Primary key
+
+  // Foreign Keys
+  userId   String // References User.id
+  lessonId String // References Lesson.id
+
+  completed Boolean @default(false) // Lesson completed or not
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id])
+  lesson Lesson @relation(fields: [lessonId], references: [id])
+
+  @@unique([userId, lessonId]) // One progress record per user per lesson
+}
+
+model Review {
+  id      String @id @default(uuid()) // Primary key
+  rating  Int // e.g. 1–5
+  comment String
+
+  // Foreign Keys
+  userId   String // References User.id
+  courseId String // References Course.id
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id])
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId]) // One review per course per user
+}
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
 }
