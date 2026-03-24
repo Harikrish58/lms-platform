@@ -1,5 +1,7 @@
-export default function Page() {
+export default async function Home() {
   return (
-    <div className="bg-background text-foreground">Hello world!!</div>
-  )
+    <div>
+      <h1>Testing DB...</h1>
+    </div>
+  );
 }
