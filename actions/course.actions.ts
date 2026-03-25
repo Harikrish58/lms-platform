@@ -1,19 +1,31 @@
 import { prisma } from "@/lib/prisma";
+import { courseSchema } from "@/schemas/course.schema";
 
-export const createCourse = async () => {
+export const createCourse = async (data: unknown) => {
   try {
+    // Validate the input data using the course schema
+    const validatedData = courseSchema.parse(data);
+
+    // Create the course in the database using Prisma
     const course = await prisma.course.create({
       data: {
-        title: " React for Beginners",
-        description: "Learn React step by step",
-        price: 49.99,
-        instructorId: "d0372743-a740-42a5-bd24-668db58437eb",
+        title: validatedData.title,
+        description: validatedData.description,
+        price: validatedData.price,
+        instructorId: validatedData.instructorId,
       },
     });
-    console.log("Course created:", course);
-    return course;
-  } catch (error) {
-    console.error("Error creating course:", error);
-    throw error;
+
+    // Return the created course data
+    return {
+      success: true,
+      data: course,
+    };
+    // If validation fails, Zod will throw an error which will be caught in the catch block
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.message || "An error occurred while creating the course",
+    };
   }
 };
