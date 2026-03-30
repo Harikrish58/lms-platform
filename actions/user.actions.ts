@@ -1,7 +1,74 @@
-import {prisma} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+
+const registerSchema = z
+  .object({
+    email: z.string().email(),
+    name: z.string().min(4).max(100),
+    password: z.string().min(6),
+    confirmPassword: z.string().min(6),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export const registerUser = async (data: unknown) => {
+  try {
+    const parsed = registerSchema.safeParse(data);
+
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: "Invalid input data",
+      };
+    }
+
+    const { email, name, password } = parsed.data;
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        message: "Email is already registered",
+      };
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        name,
+        password: hashedPassword,
+        role: "STUDENT",
+      },
+    });
+    return {
+      success: true,
+      message: "User registered successfully",
+      data: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred while registering",
+    };
+  }
+};
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
@@ -55,7 +122,7 @@ export const loginUser = async (data: unknown) => {
         role: user.role,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN },
+      { expiresIn: JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"] },
     );
     return {
       success: true,
@@ -66,7 +133,7 @@ export const loginUser = async (data: unknown) => {
           email: user.email,
           role: user.role,
         },
-      },  
+      },
     };
   } catch (error) {
     return {
@@ -75,6 +142,6 @@ export const loginUser = async (data: unknown) => {
         error instanceof Error
           ? error.message
           : "An unknown error occurred while logging in",
-    }
+    };
   }
-}
+};
