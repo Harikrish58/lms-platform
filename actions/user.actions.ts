@@ -1,19 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { z } from "zod";
+import { registerSchema, loginSchema } from "@/schemas/user.schema";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-
-const registerSchema = z
-  .object({
-    email: z.string().email(),
-    name: z.string().min(4).max(100),
-    password: z.string().min(6),
-    confirmPassword: z.string().min(6),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
 
 export const registerUser = async (data: unknown) => {
   try {
@@ -76,11 +64,6 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined");
 }
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
 
 export const loginUser = async (data: unknown) => {
   try {

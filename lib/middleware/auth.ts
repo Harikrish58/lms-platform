@@ -1,3 +1,4 @@
+import { Role } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
@@ -6,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET as string;
 export interface AuthUser {
   id: string;
   email?: string;
-  role?: string;
+  role: Role;
 }
 
 type AuthResult =

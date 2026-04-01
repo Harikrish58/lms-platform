@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server";
 import { createCourse, getCourses } from "@/actions/course.actions";
-
+import { authMiddleware } from "@/lib/middleware/auth";
+import { requireRole } from "@/lib/utils/authorize";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const result = await createCourse(body);
+    const auth = await authMiddleware(request);
+    if (!auth.success) return auth.error;
+
+    const roleCheck = requireRole(auth.user.role, ["INSTRUCTOR"]);
+    if (!roleCheck.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: roleCheck.message || "Unauthorized",
+        },
+        { status: roleCheck.status || 403 },
+      );
+    }
+
+    const result = await createCourse(body, auth.user.id);
 
     if (!result.success) {
       return NextResponse.json(

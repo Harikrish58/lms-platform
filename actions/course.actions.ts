@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { courseSchema } from "@/schemas/course.schema";
-import { Course } from "@prisma/client";
+import { Course, Role } from "@prisma/client";
 import { ZodError } from "zod";
 
-export const createCourse = async (data: unknown) => {
+export const createCourse = async (data: unknown, userId: string) => {
   try {
     // Validate the input data using the course schema
     const validatedData = courseSchema.parse(data);
@@ -14,7 +14,7 @@ export const createCourse = async (data: unknown) => {
         title: validatedData.title,
         description: validatedData.description,
         price: validatedData.price,
-        instructorId: validatedData.instructorId,
+        instructorId: userId,
       },
     });
 
@@ -147,6 +147,7 @@ export const updateCourse = async (
   id: string,
   data: unknown,
   userId: string,
+  userRole: Role,
 ) => {
   try {
     const validatedData = courseSchema.partial().parse(data);
@@ -162,7 +163,7 @@ export const updateCourse = async (
       };
     }
 
-    if (userId && course.instructorId !== userId) {
+    if (userRole !== Role.ADMIN && course.instructorId !== userId) {
       return {
         success: false,
         message: "Unauthorized to update this course",
@@ -199,7 +200,11 @@ export const updateCourse = async (
   }
 };
 
-export const deleteCourse = async (id: string, userId?: string) => {
+export const deleteCourse = async (
+  id: string,
+  userId: string,
+  userRole: Role,
+) => {
   try {
     const course = await prisma.course.findUnique({
       where: { id },
@@ -211,7 +216,7 @@ export const deleteCourse = async (id: string, userId?: string) => {
       };
     }
 
-    if (userId && course.instructorId !== userId) {
+    if (userRole !== Role.ADMIN && course.instructorId !== userId) {
       return {
         success: false,
         message: "Unauthorized to delete this course",

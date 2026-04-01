@@ -1,9 +1,12 @@
+import { Role } from "@prisma/client";
+
 import {
   deleteCourse,
   getCourseById,
   updateCourse,
 } from "@/actions/course.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
+import { requireRole } from "@/lib/utils/authorize";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -67,6 +70,17 @@ export async function PATCH(
       return auth.error;
     }
 
+    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    if (!roleCheck.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: roleCheck.message || "Unauthorized",
+        },
+        { status: roleCheck.status || 403 },
+      );
+    }
+
     const { id } = await params;
 
     if (!id) {
@@ -81,7 +95,7 @@ export async function PATCH(
 
     const body = await request.json();
 
-    const result = await updateCourse(id, body, auth.user.id);
+    const result = await updateCourse(id, body, auth.user.id, auth.user.role);
     if (!result.success) {
       return NextResponse.json(
         {
@@ -135,7 +149,23 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteCourse(id);
+    const auth = await authMiddleware(request);
+
+    if (!auth.success) {
+      return auth.error;
+    }
+    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    if (!roleCheck.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: roleCheck.message || "Unauthorized",
+        },
+        { status: roleCheck.status || 403 },
+      );
+    }
+
+    const result = await deleteCourse(id, auth.user.id, auth.user.role);
 
     if (!result.success) {
       return NextResponse.json(
