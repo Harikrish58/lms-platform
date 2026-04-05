@@ -11,12 +11,12 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ courseId: string }> },
 ) {
   try {
-    const { id } = await params;
+    const { courseId } = await params;
 
-    if (!id) {
+    if (!courseId) {
       return NextResponse.json(
         {
           success: false,
@@ -26,7 +26,7 @@ export async function GET(
       );
     }
 
-    const result = await getCourseById(id);
+    const result = await getCourseById(courseId);
 
     if (!result.success) {
       return NextResponse.json(

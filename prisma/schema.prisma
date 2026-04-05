@@ -52,9 +52,11 @@ model Section {
 }
 
 model Lesson {
-  id       String @id @default(uuid()) // Primary key
-  title    String
-  videoUrl String // Stored video location (S3/Cloudinary)
+  id          String  @id @default(uuid()) // Primary key
+  title       String
+  description String
+  videoUrl    String // Stored video location (S3/Cloudinary)
+  resources   String? // Optional additional materials (JSON string with links)
 
   // Foreign Key
   sectionId String // References Section.id

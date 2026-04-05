@@ -82,20 +82,11 @@ export async function GET(request: Request) {
       );
     }
 
-    const totalCourses = result.meta?.total || 0;
-    const totalPages = safeLimit > 0 ? Math.ceil(totalCourses / safeLimit) : 0;
-
     return NextResponse.json(
       {
         success: true,
         data: result.data,
-        meta: {
-          ...result.meta,
-          limit: safeLimit,
-          totalPages,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1,
-        },
+        meta: result.meta,
       },
       {
         status: 200,

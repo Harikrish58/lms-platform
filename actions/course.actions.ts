@@ -291,3 +291,125 @@ export const deleteCourse = async (
     };
   }
 };
+
+type GetMyCoursesResponse =
+  | {
+      success: true;
+      data: {
+        courseId: string;
+        title: string;
+        thumbnail: string | null;
+        totalLessons: number;
+        completedLessons: number;
+        progressPercentage: number;
+      }[];
+    }
+  | {
+      success: false;
+      message: string;
+    };
+
+export const getMyCourses = async (
+  userId: string,
+): Promise<GetMyCoursesResponse> => {
+  try {
+    if (!userId) {
+      return {
+        success: false,
+        message: "User ID is required",
+      };
+    }
+    const enrollments = await prisma.enrollment.findMany({
+      where: { userId },
+      select: {
+        course: {
+          select: {
+            id: true,
+            title: true,
+            thumbnail: true,
+            sections: {
+              select: {
+                lessons: {
+                  select: {
+                    id: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!enrollments.length) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+
+    const allLessonIds = [
+      ...new Set(
+      enrollments.flatMap((enrollment) =>
+      enrollment.course.sections.flatMap((section) =>
+        section.lessons.map((lesson) => lesson.id),
+      ),
+    )
+    )];
+    const progressRecords = await prisma.progress.findMany({
+      where: {
+        userId,
+        lessonId: { in: allLessonIds },
+        completed: true,
+      },
+      select: {
+        lessonId: true,
+      },
+    });
+    const completedLessonIds = new Set(
+      progressRecords.map((record) => record.lessonId),
+    );
+
+    const coursesData = enrollments.map((enrollment) => {
+      const course = enrollment.course;
+      const totalLessons = course.sections.reduce(
+        (sum, section) => sum + section.lessons.length,
+        0,
+      );
+
+      const completedLessons = course.sections.reduce(
+        (sum, section) =>
+          sum +
+          section.lessons.reduce(
+            (lessonSum, lesson) =>
+              lessonSum + (completedLessonIds.has(lesson.id) ? 1 : 0),
+            0,
+          ),
+        0,
+      );
+      const progressPercentage =
+        totalLessons > 0
+          ? Math.round((completedLessons / totalLessons) * 100)
+          : 0;
+      return {
+        courseId: course.id,
+        title: course.title,
+        thumbnail: course.thumbnail,
+        totalLessons,
+        completedLessons,
+        progressPercentage,
+      };
+    });
+    return {
+      success: true,
+      data: coursesData,
+    };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred while fetching my courses",
+    };
+  }
+};

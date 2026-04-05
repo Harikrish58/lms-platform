@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Error logging in",
+        message: error instanceof Error ? error.message : "Error logging in",
       },
       { status: 500 },
     );
