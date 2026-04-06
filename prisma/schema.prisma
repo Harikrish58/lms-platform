@@ -13,6 +13,7 @@ model User {
   email     String   @unique // No duplicate users
   password  String
   role      Role     @default(STUDENT)
+  avatarUrl String? // Optional profile picture URL
   createdAt DateTime @default(now())
 
   // Relations (virtual fields, NOT stored in DB)
@@ -28,9 +29,13 @@ model Course {
   description String
   price       Float
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
   // Foreign Key (stored in DB)
   instructorId String // References User.id
+
+  averageRating Float @default(0) // Average rating for the course, updated when reviews are added/updated
+  totalReviews  Int   @default(0) // Total number of reviews, used to calculate average rating
 
   // Relations
   instructor  User         @relation("InstructorCourses", fields: [instructorId], references: [id]) // Course belongs to one instructor
@@ -101,13 +106,14 @@ model Progress {
 model Review {
   id      String @id @default(uuid()) // Primary key
   rating  Int // e.g. 1–5
-  comment String
+  comment String?
 
   // Foreign Keys
   userId   String // References User.id
   courseId String // References Course.id
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   user   User   @relation(fields: [userId], references: [id])
