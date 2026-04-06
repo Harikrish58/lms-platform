@@ -15,6 +15,16 @@ export async function GET(
 
     const { lessonId } = await params;
 
+    if (!lessonId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Lesson ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
     const result = await getLessonById(lessonId, auth.user.id, auth.user.role);
 
     if (!result.success) {
@@ -23,16 +33,10 @@ export async function GET(
           success: false,
           message: result.message,
         },
-        {
-          status:
-            result.message === "Lesson not found"
-              ? 404
-              : result.message === "You do not have access to this lesson"
-                ? 403
-                : 400,
-        },
+        { status: result.status || 400 },
       );
     }
+
     return NextResponse.json(
       {
         success: true,
@@ -41,13 +45,11 @@ export async function GET(
       { status: 200 },
     );
   } catch (error: unknown) {
+    console.error("error fetching lesson details in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unknown error occurred while fetching the lesson",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );

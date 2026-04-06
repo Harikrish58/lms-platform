@@ -1,24 +1,36 @@
 import { getReviewSummary } from "@/actions/review.actions";
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function GET(
-  request: Request,
-  { params }: { params: { courseId: string } },
+  _request: Request,
+  { params }: { params: Promise<{ courseId: string }> | { courseId: string } },
 ) {
   try {
-    const { courseId } = params;
+    const resolvedParams = await params;
+    const { courseId } = resolvedParams;
+
+    if (!courseId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course ID is required",
+        },
+        { status: 400 },
+      );
+    }
 
     const result = await getReviewSummary(courseId);
+
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
           message: result.message,
         },
-        { status: 404 },
+        { status: result.status || 404 },
       );
     }
+
     return NextResponse.json(
       {
         success: true,
@@ -27,13 +39,11 @@ export async function GET(
       { status: 200 },
     );
   } catch (error: unknown) {
+    console.error("failed to get review summary in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unknown error occurred while fetching the review summary",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );

@@ -2,20 +2,21 @@ import { prisma } from "@/lib/prisma";
 import { ReviewSchema, UpdateReviewSchema } from "@/schemas/review.schema";
 import { Prisma, Role } from "@prisma/client";
 import { canAccessCourse } from "@/actions/enrollment.actions";
-import { Stats } from "fs";
 
 type CreateReviewResponse =
   | {
       success: true;
+      status: number;
       message: string;
       data: {
         id: string;
         rating: number;
-        comment: string;
+        comment: string | null;
       };
     }
   | {
       success: false;
+      status: number;
       message: string;
     };
 
@@ -30,7 +31,8 @@ export const createReview = async (
     if (!parsed.success) {
       return {
         success: false,
-        message: "Invalid review data ",
+        status: 400,
+        message: parsed.error.issues[0].message || "Invalid review data",
       };
     }
 
@@ -44,6 +46,7 @@ export const createReview = async (
     if (!course) {
       return {
         success: false,
+        status: 404,
         message: "Course not found",
       };
     }
@@ -52,6 +55,7 @@ export const createReview = async (
     if (!hasAccess) {
       return {
         success: false,
+        status: 403,
         message: "You must be enrolled to review this course",
       };
     }
@@ -68,6 +72,7 @@ export const createReview = async (
     if (existingReview) {
       return {
         success: false,
+        status: 400,
         message: "You have already reviewed this course",
       };
     }
@@ -86,7 +91,9 @@ export const createReview = async (
       await tx.course.update({
         where: { id: courseId },
         data: {
-          averageRating: stats._avg.rating ?? 0,
+          averageRating: stats._avg.rating
+            ? Number(stats._avg.rating.toFixed(1))
+            : 0,
           totalReviews: stats._count.rating,
         },
       });
@@ -95,6 +102,7 @@ export const createReview = async (
 
     return {
       success: true,
+      status: 201,
       message: "Review created successfully",
       data: {
         id: createdReview.id,
@@ -103,12 +111,11 @@ export const createReview = async (
       },
     };
   } catch (error: unknown) {
+    console.error("failed to create review", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while creating the review",
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -116,12 +123,13 @@ export const createReview = async (
 type GetCourseReviewsResponse =
   | {
       success: true;
+      status: number;
       message: string;
       data: {
         reviews: {
           id: string;
           rating: number;
-          comment: string;
+          comment: string | null;
           createdAt: Date;
           user: {
             id: string;
@@ -139,6 +147,7 @@ type GetCourseReviewsResponse =
     }
   | {
       success: false;
+      status: number;
       message: string;
     };
 
@@ -156,6 +165,7 @@ export const getCourseReviews = async (
     if (!courseId) {
       return {
         success: false,
+        status: 400,
         message: "Course ID is required",
       };
     }
@@ -166,6 +176,7 @@ export const getCourseReviews = async (
     if (!course) {
       return {
         success: false,
+        status: 404,
         message: "Course not found",
       };
     }
@@ -175,7 +186,7 @@ export const getCourseReviews = async (
 
     const sort: SortOption =
       query.sort === "highest" || query.sort === "lowest"
-        ? query.sort
+        ? (query.sort as SortOption)
         : "latest";
 
     const skip = (page - 1) * limit;
@@ -195,27 +206,28 @@ export const getCourseReviews = async (
         break;
     }
 
-    const reviews = await prisma.review.findMany({
-      where: { courseId },
-      skip,
-      take: limit,
-      orderBy,
-      select: {
-        id: true,
-        rating: true,
-        comment: true,
-        createdAt: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
+    const [reviews, total] = await Promise.all([
+      prisma.review.findMany({
+        where: { courseId },
+        skip,
+        take: limit,
+        orderBy,
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+            },
           },
         },
-      },
-    });
-
-    const total = await prisma.review.count({ where: { courseId } });
+      }),
+      prisma.review.count({ where: { courseId } }),
+    ]);
 
     const formattedReviews = reviews.map((review) => ({
       id: review.id,
@@ -231,6 +243,7 @@ export const getCourseReviews = async (
 
     return {
       success: true,
+      status: 200,
       message: "Reviews fetched successfully",
       data: {
         reviews: formattedReviews,
@@ -243,12 +256,11 @@ export const getCourseReviews = async (
       },
     };
   } catch (error: unknown) {
+    console.error("error fetching course reviews", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while creating the review",
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -256,6 +268,7 @@ export const getCourseReviews = async (
 type GetreviewSummaryResponse =
   | {
       success: true;
+      status: number;
       message: string;
       data: {
         averageRating: number;
@@ -265,6 +278,7 @@ type GetreviewSummaryResponse =
     }
   | {
       success: false;
+      status: number;
       message: string;
     };
 
@@ -272,17 +286,31 @@ export const getReviewSummary = async (
   courseId: string,
 ): Promise<GetreviewSummaryResponse> => {
   try {
-    const stats = await prisma.review.aggregate({
-      where: { courseId },
-      _avg: { rating: true },
-      _count: { rating: true },
+    const courseExists = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { id: true },
     });
 
-    const distribution = await prisma.review.groupBy({
-      where: { courseId },
-      by: ["rating"],
-      _count: { rating: true },
-    });
+    if (!courseExists) {
+      return {
+        success: false,
+        status: 404,
+        message: "Course not found",
+      };
+    }
+
+    const [stats, distribution] = await Promise.all([
+      prisma.review.aggregate({
+        where: { courseId },
+        _avg: { rating: true },
+        _count: { rating: true },
+      }),
+      prisma.review.groupBy({
+        where: { courseId },
+        by: ["rating"],
+        _count: { rating: true },
+      }),
+    ]);
 
     const formattedDistribution: Record<number, number> = {
       5: 0,
@@ -298,6 +326,7 @@ export const getReviewSummary = async (
 
     return {
       success: true,
+      status: 200,
       message: "Review summary fetched successfully",
       data: {
         averageRating: stats._avg.rating
@@ -308,12 +337,11 @@ export const getReviewSummary = async (
       },
     };
   } catch (error: unknown) {
+    console.error("failed to get review summary", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while creating the review",
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -321,19 +349,20 @@ export const getReviewSummary = async (
 type UpdateReviewResponse =
   | {
       success: true;
+      status: number;
       message: string;
       data: {
         id: string;
         rating: number;
-        comment: string;
+        comment: string | null;
         updatedAt: Date;
       };
     }
   | {
       success: false;
+      status: number;
       message: string;
       errors?: unknown[];
-      status?: number;
     };
 
 export const updateReview = async (
@@ -344,15 +373,14 @@ export const updateReview = async (
   try {
     const parsed = UpdateReviewSchema.safeParse(body);
     if (!parsed.success) {
-      const formattedErrors = parsed.error.issues.map((issue) => ({
-        field: issue.path.length ? issue.path.join(".") : "Unknown field",
-        message: issue.message,
-      }));
       return {
         success: false,
-        message: formattedErrors[0].message || "Invalid review data",
-        errors: formattedErrors,
         status: 400,
+        message: parsed.error.issues[0].message || "Invalid review data",
+        errors: parsed.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
       };
     }
 
@@ -361,19 +389,20 @@ export const updateReview = async (
     const existingReview = await prisma.review.findUnique({
       where: { id: reviewId },
     });
+
     if (!existingReview) {
       return {
         success: false,
-        message: "Review not found",
         status: 404,
+        message: "Review not found",
       };
     }
 
     if (existingReview.userId !== userId) {
       return {
         success: false,
-        message: "You can only update your own review",
         status: 403,
+        message: "You can only update your own review",
       };
     }
 
@@ -383,8 +412,8 @@ export const updateReview = async (
     ) {
       return {
         success: false,
-        message: "At least one of rating or comment must be provided",
         status: 400,
+        message: "No changes provided",
       };
     }
 
@@ -417,6 +446,7 @@ export const updateReview = async (
 
     return {
       success: true,
+      status: 200,
       message: "Review updated successfully",
       data: {
         id: updatedReview.id,
@@ -426,13 +456,11 @@ export const updateReview = async (
       },
     };
   } catch (error: unknown) {
+    console.error("error while updating review", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while creating the review",
       status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -440,12 +468,13 @@ export const updateReview = async (
 type DeleteReviewResponse =
   | {
       success: true;
+      status: number;
       message: string;
     }
   | {
       success: false;
+      status: number;
       message: string;
-      status?: number;
     };
 
 export const deleteReview = async (
@@ -459,16 +488,16 @@ export const deleteReview = async (
     if (!existingReview) {
       return {
         success: false,
-        message: "Review not found",
         status: 404,
+        message: "Review not found",
       };
     }
 
     if (existingReview.userId !== userId) {
       return {
         success: false,
-        message: "You can only delete your own review",
         status: 403,
+        message: "You can only delete your own review",
       };
     }
 
@@ -493,18 +522,18 @@ export const deleteReview = async (
         },
       });
     });
+
     return {
       success: true,
+      status: 200,
       message: "Review deleted successfully",
     };
   } catch (error: unknown) {
+    console.error("failed to delete review from course", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while deleting the review",
       status: 500,
+      message: "Internal Server Error",
     };
   }
 };

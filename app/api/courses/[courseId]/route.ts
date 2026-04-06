@@ -1,5 +1,4 @@
 import { Role } from "@prisma/client";
-
 import {
   deleteCourse,
   getCourseById,
@@ -10,7 +9,7 @@ import { requireRole } from "@/lib/utils/authorize";
 import { NextResponse } from "next/server";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ courseId: string }> },
 ) {
   try {
@@ -34,9 +33,7 @@ export async function GET(
           success: false,
           message: result.message,
         },
-        {
-          status: result.message === "Course not found" ? 404 : 400,
-        },
+        { status: result.status || 400 },
       );
     }
 
@@ -48,11 +45,11 @@ export async function GET(
       { status: 200 },
     );
   } catch (error: unknown) {
+    console.error("error fetching course by id in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Error fetching course",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );
@@ -61,7 +58,7 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ courseId: string }> },
 ) {
   try {
     const auth = await authMiddleware(request);
@@ -81,9 +78,9 @@ export async function PATCH(
       );
     }
 
-    const { id } = await params;
+    const { courseId } = await params;
 
-    if (!id) {
+    if (!courseId) {
       return NextResponse.json(
         {
           success: false,
@@ -95,21 +92,20 @@ export async function PATCH(
 
     const body = await request.json();
 
-    const result = await updateCourse(id, body, auth.user.id, auth.user.role);
+    const result = await updateCourse(
+      courseId,
+      body,
+      auth.user.id,
+      auth.user.role,
+    );
+
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
           message: result.message,
         },
-        {
-          status:
-            result.message === "Course not found"
-              ? 404
-              : result.message === "Not authorized to update this course"
-                ? 403
-                : 400,
-        },
+        { status: result.status || 400 },
       );
     }
 
@@ -121,11 +117,11 @@ export async function PATCH(
       { status: 200 },
     );
   } catch (error: unknown) {
+    console.error("failed to patch course details", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Error updating course",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );
@@ -134,12 +130,12 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ courseId: string }> },
 ) {
   try {
-    const { id } = await params;
+    const { courseId } = await params;
 
-    if (!id) {
+    if (!courseId) {
       return NextResponse.json(
         {
           success: false,
@@ -154,6 +150,7 @@ export async function DELETE(
     if (!auth.success) {
       return auth.error;
     }
+
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
     if (!roleCheck.success) {
       return NextResponse.json(
@@ -165,7 +162,7 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteCourse(id, auth.user.id, auth.user.role);
+    const result = await deleteCourse(courseId, auth.user.id, auth.user.role);
 
     if (!result.success) {
       return NextResponse.json(
@@ -173,14 +170,7 @@ export async function DELETE(
           success: false,
           message: result.message,
         },
-        {
-          status:
-            result.message === "Course not found"
-              ? 404
-              : result.message === "Unauthorized to delete this course"
-                ? 403
-                : 400,
-        },
+        { status: result.status || 400 },
       );
     }
 
@@ -192,11 +182,11 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error: unknown) {
+    console.error("error while deleting course in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Error deleting course",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );

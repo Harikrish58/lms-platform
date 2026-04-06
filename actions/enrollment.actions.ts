@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 
-
 export const enrollInCourse = async (userId: string, courseId: string) => {
   try {
     const course = await prisma.course.findUnique({
@@ -12,6 +11,7 @@ export const enrollInCourse = async (userId: string, courseId: string) => {
     if (!course) {
       return {
         success: false,
+        status: 404,
         message: "Course not found",
       };
     }
@@ -19,6 +19,7 @@ export const enrollInCourse = async (userId: string, courseId: string) => {
     if (course.instructorId === userId) {
       return {
         success: false,
+        status: 400,
         message: "Instructors cannot enroll in their own courses",
       };
     }
@@ -35,6 +36,7 @@ export const enrollInCourse = async (userId: string, courseId: string) => {
     if (existingEnrollment) {
       return {
         success: false,
+        status: 400,
         message: "Already enrolled in this course",
       };
     }
@@ -45,16 +47,19 @@ export const enrollInCourse = async (userId: string, courseId: string) => {
         courseId,
       },
     });
+
     return {
       success: true,
+      status: 201,
       message: "Successfully enrolled in course",
       data: enrollment,
     };
   } catch (error: unknown) {
+    console.error("failed to enroll user in course", error);
     return {
       success: false,
-      message:
-        error instanceof Error ? error.message : "Error enrolling in course",
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -63,15 +68,20 @@ export const isUserEnrolledInCourse = async (
   userId: string,
   courseId: string,
 ) => {
-  const enrollment = await prisma.enrollment.findUnique({
-    where: {
-      userId_courseId: {
-        userId,
-        courseId,
+  try {
+    const enrollment = await prisma.enrollment.findUnique({
+      where: {
+        userId_courseId: {
+          userId,
+          courseId,
+        },
       },
-    },
-  });
-  return !!enrollment;
+    });
+    return !!enrollment;
+  } catch (error: unknown) {
+    console.error("error checking enrollment status", error);
+    return false;
+  }
 };
 
 export const canAccessCourse = async (
@@ -79,23 +89,30 @@ export const canAccessCourse = async (
   role: Role,
   courseId: string,
 ) => {
-  if (role === Role.ADMIN) return true;
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: { instructorId: true },
-  });
+  try {
+    if (role === Role.ADMIN) return true;
 
-  if (!course) return false;
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      select: { instructorId: true },
+    });
 
-  if (course.instructorId === userId) return true;
+    if (!course) return false;
 
-  const enrollment = await prisma.enrollment.findUnique({
-    where: {
-      userId_courseId: {
-        userId,
-        courseId,
+    if (course.instructorId === userId) return true;
+
+    const enrollment = await prisma.enrollment.findUnique({
+      where: {
+        userId_courseId: {
+          userId,
+          courseId,
+        },
       },
-    },
-  });
-  return !!enrollment;
+    });
+
+    return !!enrollment;
+  } catch (error: unknown) {
+    console.error("access check failed for course", error);
+    return false;
+  }
 };

@@ -13,16 +13,28 @@ export async function GET(request: Request) {
     const result = await getMyCourses(auth.user.id);
 
     if (!result.success) {
-      return NextResponse.json(result, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: result.message,
+        },
+        { status: result.status || 400 },
+      );
     }
 
-    return NextResponse.json(result, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: result.data,
+      },
+      { status: 200 },
+    );
   } catch (error: unknown) {
+    console.error("error fetching user courses in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Internal server error",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );

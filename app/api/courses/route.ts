@@ -5,10 +5,10 @@ import { requireRole } from "@/lib/utils/authorize";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-
     const auth = await authMiddleware(request);
-    if (!auth.success) return auth.error;
+    if (!auth.success) {
+      return auth.error;
+    }
 
     const roleCheck = requireRole(auth.user.role, ["INSTRUCTOR"]);
     if (!roleCheck.success) {
@@ -21,41 +21,35 @@ export async function POST(request: Request) {
       );
     }
 
+    const body = await request.json();
     const result = await createCourse(body, auth.user.id);
 
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
-          message: result.message || "Failed to create course",
+          message: result.message,
+          errors: result.errors,
         },
-        {
-          status: 400,
-        },
+        { status: result.status || 400 },
       );
     }
+
     return NextResponse.json(
       {
         success: true,
         data: result.data,
       },
-      {
-        status: 201,
-      },
+      { status: 201 },
     );
   } catch (error: unknown) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "An unknown error occurred while creating the course";
+    console.error("error while creating course in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message,
+        message: "Internal Server Error",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }
@@ -66,19 +60,30 @@ export async function GET(request: Request) {
 
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.max(1, Number(searchParams.get("limit")) || 10);
-    const safeLimit = Math.min(limit, 50); // Cap limit to prevent abuse (50 = max items per page)
+    const safeLimit = Math.min(limit, 50);
 
-    const result = await getCourses({ page, limit: safeLimit });
+    const result = await getCourses({
+      page,
+      limit: safeLimit,
+      search: searchParams.get("search") || undefined,
+      minPrice: searchParams.get("minPrice")
+        ? Number(searchParams.get("minPrice"))
+        : undefined,
+      maxPrice: searchParams.get("maxPrice")
+        ? Number(searchParams.get("maxPrice"))
+        : undefined,
+      minRating: searchParams.get("minRating")
+        ? Number(searchParams.get("minRating"))
+        : undefined,
+    });
 
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
-          message: result.message || "Failed to fetch courses",
+          message: result.message,
         },
-        {
-          status: 400,
-        },
+        { status: result.status || 400 },
       );
     }
 
@@ -88,23 +93,16 @@ export async function GET(request: Request) {
         data: result.data,
         meta: result.meta,
       },
-      {
-        status: 200,
-      },
+      { status: 200 },
     );
   } catch (error: unknown) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "An unknown error occurred while fetching courses";
+    console.error("failed to fetch courses in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message,
+        message: "Internal Server Error",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }

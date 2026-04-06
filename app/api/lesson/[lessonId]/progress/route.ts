@@ -15,6 +15,16 @@ export async function POST(
 
     const { lessonId } = await params;
 
+    if (!lessonId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Lesson ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
     const result = await markLessonComplete(
       lessonId,
       auth.user.id,
@@ -27,24 +37,24 @@ export async function POST(
           success: false,
           message: result.message,
         },
-        {
-          status:
-            result.message === "Lesson not found"
-              ? 404
-              : result.message === "You do not have access to this lesson"
-                ? 403
-                : 400,
-        },
+        { status: result.status || 400 },
       );
     }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: result.message,
+        data: result.data,
+      },
+      { status: 200 },
+    );
   } catch (error: unknown) {
+    console.error("failed to mark lesson as complete in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unknown error occurred while marking the lesson as complete",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );

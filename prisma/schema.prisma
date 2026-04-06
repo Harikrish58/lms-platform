@@ -28,6 +28,7 @@ model Course {
   title       String
   description String
   price       Float
+  thumbnail   String? // Stored thumbnail location
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
 
@@ -37,8 +38,10 @@ model Course {
   averageRating Float @default(0) // Average rating for the course, updated when reviews are added/updated
   totalReviews  Int   @default(0) // Total number of reviews, used to calculate average rating
 
+  isPublished Boolean @default(false) // Whether the course is visible to students
+
   // Relations
-  instructor  User         @relation("InstructorCourses", fields: [instructorId], references: [id]) // Course belongs to one instructor
+  instructor  User         @relation("InstructorCourses", fields: [instructorId], references: [id], onDelete: Restrict) // Course belongs to one instructor
   sections    Section[] // Course → many sections
   enrollments Enrollment[] // Users enrolled in this course
   reviews     Review[] // Reviews for this course
@@ -47,12 +50,13 @@ model Course {
 model Section {
   id    String @id @default(uuid()) // Primary key
   title String
+  order Int    @default(0) // Order of sections within a course
 
   // Foreign Key
   courseId String // References Course.id
 
   // Relations
-  course  Course   @relation(fields: [courseId], references: [id]) // Section belongs to one course
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Restrict) // Section belongs to one course
   lessons Lesson[] // Section → many lessons
 }
 
@@ -62,12 +66,13 @@ model Lesson {
   description String
   videoUrl    String // Stored video location (S3/Cloudinary)
   resources   String? // Optional additional materials (JSON string with links)
+  order       Int     @default(0) // Order of lessons within a section
 
   // Foreign Key
   sectionId String // References Section.id
 
   // Relations
-  section  Section    @relation(fields: [sectionId], references: [id]) // Lesson belongs to one section
+  section  Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade) // Lesson belongs to one section
   progress Progress[] // Users progress on this lesson
 }
 
@@ -81,8 +86,8 @@ model Enrollment {
   createdAt DateTime @default(now())
 
   // Relations
-  user   User   @relation(fields: [userId], references: [id]) // Enrollment → one user
-  course Course @relation(fields: [courseId], references: [id]) // Enrollment → one course
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade) // Enrollment → one user
+  course Course @relation(fields: [courseId], references: [id], onDelete: Restrict) // Enrollment → one course
 
   @@unique([userId, courseId]) // Prevent same user enrolling twice
 }
@@ -97,14 +102,14 @@ model Progress {
   completed Boolean @default(false) // Lesson completed or not
 
   // Relations
-  user   User   @relation(fields: [userId], references: [id])
-  lesson Lesson @relation(fields: [lessonId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId]) // One progress record per user per lesson
 }
 
 model Review {
-  id      String @id @default(uuid()) // Primary key
+  id      String  @id @default(uuid()) // Primary key
   rating  Int // e.g. 1–5
   comment String?
 
@@ -116,8 +121,8 @@ model Review {
   updatedAt DateTime @updatedAt
 
   // Relations
-  user   User   @relation(fields: [userId], references: [id])
-  course Course @relation(fields: [courseId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade) // Review → one user
+  course Course @relation(fields: [courseId], references: [id], onDelete: Restrict)
 
   @@unique([userId, courseId]) // One review per course per user
 }

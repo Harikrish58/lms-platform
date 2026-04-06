@@ -16,15 +16,17 @@ export async function PATCH(
     const body = await request.json();
 
     const result = await updateReview(reviewId, auth.user.id, body);
+
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
           message: result.message,
         },
-        { status: 400 },
+        { status: result.status || 400 },
       );
     }
+
     return NextResponse.json(
       {
         success: true,
@@ -34,11 +36,11 @@ export async function PATCH(
       { status: 200 },
     );
   } catch (error: unknown) {
+    console.error("error updating review in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Error updating review",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );
@@ -58,15 +60,17 @@ export async function DELETE(
     const { reviewId } = await params;
 
     const result = await deleteReview(reviewId, auth.user.id);
+
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
           message: result.message,
         },
-        { status: 400 },
+        { status: result.status || 400 },
       );
     }
+
     return NextResponse.json(
       {
         success: true,
@@ -75,11 +79,11 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error: unknown) {
+    console.error("failed to delete review in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Error updating review",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );
