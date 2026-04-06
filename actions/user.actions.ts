@@ -3,6 +3,13 @@ import { registerSchema, loginSchema } from "@/schemas/user.schema";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET is not defined");
+}
+
 export const registerUser = async (data: unknown) => {
   try {
     const parsed = registerSchema.safeParse(data);
@@ -10,7 +17,8 @@ export const registerUser = async (data: unknown) => {
     if (!parsed.success) {
       return {
         success: false,
-        message: "Invalid input data",
+        status: 400,
+        message: parsed.error.issues[0].message || "Invalid input data",
       };
     }
 
@@ -23,6 +31,7 @@ export const registerUser = async (data: unknown) => {
     if (existingUser) {
       return {
         success: false,
+        status: 409,
         message: "Email is already registered",
       };
     }
@@ -37,8 +46,10 @@ export const registerUser = async (data: unknown) => {
         role: "STUDENT",
       },
     });
+
     return {
       success: true,
+      status: 201,
       message: "User registered successfully",
       data: {
         id: user.id,
@@ -47,23 +58,15 @@ export const registerUser = async (data: unknown) => {
         role: user.role,
       },
     };
-  } catch (error) {
+  } catch (error: unknown) {
+    console.error("failed to register new user", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while registering",
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
-
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET is not defined");
-}
 
 export const loginUser = async (data: unknown) => {
   try {
@@ -72,7 +75,8 @@ export const loginUser = async (data: unknown) => {
     if (!parsed.success) {
       return {
         success: false,
-        message: "Invalid input data",
+        status: 400,
+        message: parsed.error.issues[0].message || "Invalid input data",
       };
     }
 
@@ -86,6 +90,7 @@ export const loginUser = async (data: unknown) => {
     if (!user) {
       return {
         success: false,
+        status: 401,
         message: "Invalid email or password",
       };
     }
@@ -95,6 +100,7 @@ export const loginUser = async (data: unknown) => {
     if (!isPasswordValid) {
       return {
         success: false,
+        status: 401,
         message: "Invalid email or password",
       };
     }
@@ -108,8 +114,10 @@ export const loginUser = async (data: unknown) => {
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"] },
     );
+
     return {
       success: true,
+      status: 200,
       data: {
         token,
         user: {
@@ -119,13 +127,12 @@ export const loginUser = async (data: unknown) => {
         },
       },
     };
-  } catch (error) {
+  } catch (error: unknown) {
+    console.error("login attempt failed", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while logging in",
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };

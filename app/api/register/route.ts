@@ -12,7 +12,7 @@ export async function POST(request: Request) {
           success: false,
           message: result.message,
         },
-        { status: 400 },
+        { status: result.status || 400 },
       );
     }
 
@@ -24,13 +24,11 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error: unknown) {
+    console.error("error during user registration in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unknown error occurred while registering",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );

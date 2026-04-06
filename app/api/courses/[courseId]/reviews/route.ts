@@ -21,15 +21,17 @@ export async function POST(
       auth.user.role,
       body,
     );
+
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
           message: result.message,
         },
-        { status: result.message === "Course not found" ? 404 : 400 },
+        { status: result.status || 400 },
       );
     }
+
     return NextResponse.json(
       {
         success: true,
@@ -39,11 +41,11 @@ export async function POST(
       { status: 201 },
     );
   } catch (error: unknown) {
+    console.error("error posting review to course", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Error fetching course",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );
@@ -56,39 +58,38 @@ export async function GET(
 ) {
   try {
     const { courseId } = await params;
-
     const { searchParams } = new URL(request.url);
 
-    const response = await getCourseReviews(courseId, {
+    const result = await getCourseReviews(courseId, {
       page: Number(searchParams.get("page")) || 1,
       limit: Number(searchParams.get("limit")) || 10,
       sort: searchParams.get("sort") || "latest",
     });
 
-    if (!response.success) {
+    if (!result.success) {
       return NextResponse.json(
         {
           success: false,
-          message: response.message,
+          message: result.message,
         },
-        { status: response.message === "Course not found" ? 404 : 400 },
+        { status: result.status || 400 },
       );
     }
 
     return NextResponse.json(
       {
         success: true,
-        message: response.message,
-        data: response.data,
+        message: result.message,
+        data: result.data,
       },
       { status: 200 },
     );
   } catch (error: unknown) {
+    console.error("failed to get reviews for course", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Error fetching course",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );

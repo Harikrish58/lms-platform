@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/browser";
 import { prisma } from "@/lib/prisma";
 import { courseSchema } from "@/schemas/course.schema";
 import { Course, Role } from "@prisma/client";
@@ -5,10 +6,8 @@ import { ZodError } from "zod";
 
 export const createCourse = async (data: unknown, userId: string) => {
   try {
-    // Validate the input data using the course schema
     const validatedData = courseSchema.parse(data);
 
-    // Create the course in the database using Prisma
     const course = await prisma.course.create({
       data: {
         title: validatedData.title,
@@ -18,29 +17,30 @@ export const createCourse = async (data: unknown, userId: string) => {
       },
     });
 
-    // Return the created course data
     return {
       success: true,
+      status: 201,
       data: course,
     };
-    // If validation fails, Zod will throw an error which will be caught in the catch block
   } catch (error: unknown) {
     if (error instanceof ZodError) {
+      console.error(
+        "validation error while creating course",
+        error.flatten().fieldErrors,
+      );
       return {
         success: false,
+        status: 400,
         message: "Validation failed",
         errors: error.flatten().fieldErrors,
       };
     }
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "An unknown error occurred while creating the course";
-
+    console.error("failed to create course", error);
     return {
       success: false,
-      message,
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -48,26 +48,74 @@ export const createCourse = async (data: unknown, userId: string) => {
 export const getCourses = async ({
   page = 1,
   limit = 10,
+  search,
+  minPrice,
+  maxPrice,
+  minRating,
 }: {
   page?: number;
   limit?: number;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
 }) => {
   try {
     const skip = (page - 1) * limit;
 
+    const where: Prisma.CourseWhereInput = {
+      isPublished: true,
+    };
+
+    if (search) {
+      where.title = {
+        contains: search,
+        mode: "insensitive",
+      };
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      where.price = {};
+      if (minPrice !== undefined) where.price.gte = minPrice;
+      if (maxPrice !== undefined) where.price.lte = maxPrice;
+    }
+
+    if (minRating !== undefined) {
+      where.averageRating = {
+        gte: minRating,
+      };
+    }
+
     const [courses, totalCourses] = await Promise.all([
       prisma.course.findMany({
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
+        include: {
+          instructor: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+            },
+          },
+          _count: {
+            select: {
+              enrollments: true,
+              sections: true,
+            },
+          },
+        },
       }),
-      prisma.course.count(),
+      prisma.course.count({ where }),
     ]);
 
     const totalPages = Math.ceil(totalCourses / limit);
 
     return {
       success: true,
+      status: 200,
       data: courses,
       meta: {
         total: totalCourses,
@@ -77,22 +125,11 @@ export const getCourses = async ({
       },
     };
   } catch (error: unknown) {
-    if (error instanceof ZodError) {
-      return {
-        success: false,
-        message: "Validation failed",
-        errors: error.flatten().fieldErrors,
-      };
-    }
-
-    const message =
-      error instanceof Error
-        ? error.message
-        : "An unknown error occurred while creating the course";
-
+    console.error("error fetching courses list", error);
     return {
       success: false,
-      message,
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -100,10 +137,12 @@ export const getCourses = async ({
 type GetCourseByIdResponse =
   | {
       success: true;
+      status: number;
       data: Course;
     }
   | {
       success: false;
+      status: number;
       message: string;
     };
 
@@ -114,31 +153,31 @@ export const getCourseById = async (
     if (!id) {
       return {
         success: false,
+        status: 400,
         message: "Course ID is required",
       };
     }
     const course = await prisma.course.findUnique({
       where: { id },
     });
-    if (!course) {
+    if (!course || !course.isPublished) {
       return {
         success: false,
+        status: 404,
         message: "Course not found",
       };
     }
     return {
       success: true,
+      status: 200,
       data: course,
     };
   } catch (error: unknown) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "An unknown error occurred while fetching the course";
-
+    console.error("could not get course by id", error);
     return {
       success: false,
-      message,
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -159,6 +198,7 @@ export const updateCourse = async (
     if (!course) {
       return {
         success: false,
+        status: 404,
         message: "Course not found",
       };
     }
@@ -166,6 +206,7 @@ export const updateCourse = async (
     if (userRole !== Role.ADMIN && course.instructorId !== userId) {
       return {
         success: false,
+        status: 403,
         message: "Unauthorized to update this course",
       };
     }
@@ -177,25 +218,28 @@ export const updateCourse = async (
 
     return {
       success: true,
+      status: 200,
       data: updatedCourse,
     };
   } catch (error: unknown) {
     if (error instanceof ZodError) {
+      console.error(
+        "validation failed during course update",
+        error.flatten().fieldErrors,
+      );
       return {
         success: false,
+        status: 400,
         message: "Validation failed",
         errors: error.flatten().fieldErrors,
       };
     }
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "An unknown error occurred while updating the course";
-
+    console.error("error updating course data", error);
     return {
       success: false,
-      message,
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -212,6 +256,7 @@ export const deleteCourse = async (
     if (!course) {
       return {
         success: false,
+        status: 404,
         message: "Course not found",
       };
     }
@@ -219,6 +264,7 @@ export const deleteCourse = async (
     if (userRole !== Role.ADMIN && course.instructorId !== userId) {
       return {
         success: false,
+        status: 403,
         message: "Unauthorized to delete this course",
       };
     }
@@ -269,25 +315,15 @@ export const deleteCourse = async (
 
     return {
       success: true,
+      status: 200,
       message: "Course deleted successfully",
     };
   } catch (error: unknown) {
-    if (error instanceof ZodError) {
-      return {
-        success: false,
-        message: "Validation failed",
-        errors: error.flatten().fieldErrors,
-      };
-    }
-
-    const message =
-      error instanceof Error
-        ? error.message
-        : "An unknown error occurred while updating the course";
-
+    console.error("error during course deletion transaction", error);
     return {
       success: false,
-      message,
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -295,6 +331,7 @@ export const deleteCourse = async (
 type GetMyCoursesResponse =
   | {
       success: true;
+      status: number;
       data: {
         courseId: string;
         title: string;
@@ -306,6 +343,7 @@ type GetMyCoursesResponse =
     }
   | {
       success: false;
+      status: number;
       message: string;
     };
 
@@ -316,6 +354,7 @@ export const getMyCourses = async (
     if (!userId) {
       return {
         success: false,
+        status: 400,
         message: "User ID is required",
       };
     }
@@ -343,18 +382,20 @@ export const getMyCourses = async (
     if (!enrollments.length) {
       return {
         success: true,
+        status: 200,
         data: [],
       };
     }
 
     const allLessonIds = [
       ...new Set(
-      enrollments.flatMap((enrollment) =>
-      enrollment.course.sections.flatMap((section) =>
-        section.lessons.map((lesson) => lesson.id),
+        enrollments.flatMap((enrollment) =>
+          enrollment.course.sections.flatMap((section) =>
+            section.lessons.map((lesson) => lesson.id),
+          ),
+        ),
       ),
-    )
-    )];
+    ];
     const progressRecords = await prisma.progress.findMany({
       where: {
         userId,
@@ -401,15 +442,105 @@ export const getMyCourses = async (
     });
     return {
       success: true,
+      status: 200,
       data: coursesData,
     };
   } catch (error: unknown) {
+    console.error("failed to fetch user courses and progress", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while fetching my courses",
+      status: 500,
+      message: "Internal Server Error",
+    };
+  }
+};
+
+export const toggleCoursePublishStatus = async (
+  id: string,
+  userId: string,
+  userRole: Role,
+) => {
+  try {
+    const course = await prisma.course.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        instructorId: true,
+        isPublished: true,
+        title: true,
+        description: true,
+        sections: {
+          select: {
+            id: true,
+            lessons: {
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!course) {
+      return {
+        success: false,
+        status: 404,
+        message: "course not found",
+      };
+    }
+
+    if (userRole !== Role.ADMIN && course.instructorId !== userId) {
+      return {
+        success: false,
+        status: 403,
+        message: "unauthorized to change publish status",
+      };
+    }
+
+    if (!course.isPublished) {
+      const hasSections = course.sections.length > 0;
+      const hasLessons = course.sections.some((s) => s.lessons.length > 0);
+
+      if (!hasSections || !hasLessons) {
+        return {
+          success: false,
+          status: 400,
+          message:
+            "cannot publish course without at least one section and one lesson",
+        };
+      }
+
+      if (!course.title || !course.description) {
+        return {
+          success: false,
+          status: 400,
+          message: "course title and description are required for publishing",
+        };
+      }
+    }
+
+    const updatedCourse = await prisma.course.update({
+      where: { id },
+      data: { isPublished: !course.isPublished },
+    });
+
+    return {
+      success: true,
+      status: 200,
+      message: `course ${updatedCourse.isPublished ? "published" : "unpublished"} successfully`,
+      data: {
+        id: updatedCourse.id,
+        isPublished: updatedCourse.isPublished,
+      },
+    };
+  } catch (error: unknown) {
+    console.error("failed to toggle course publish status", {
+      error,
+      courseId: id,
+    });
+    return {
+      success: false,
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };

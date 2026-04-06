@@ -5,6 +5,7 @@ import { Role } from "@prisma/client";
 type GetLessonByIdResponse =
   | {
       success: true;
+      status: number;
       data: {
         id: string;
         title: string;
@@ -15,6 +16,7 @@ type GetLessonByIdResponse =
     }
   | {
       success: false;
+      status: number;
       message: string;
     };
 
@@ -27,6 +29,7 @@ export const getLessonById = async (
     if (!lessonId) {
       return {
         success: false,
+        status: 400,
         message: "Lesson ID is required",
       };
     }
@@ -50,6 +53,7 @@ export const getLessonById = async (
     if (!lesson) {
       return {
         success: false,
+        status: 404,
         message: "Lesson not found",
       };
     }
@@ -57,21 +61,26 @@ export const getLessonById = async (
     if (!lesson.section) {
       return {
         success: false,
-        message: "Lesson is not associated with any section",
+        status: 500,
+        message: "Internal Server Error",
       };
     }
 
     const courseId = lesson.section.courseId;
 
     const hasAccess = await canAccessCourse(userId, role, courseId);
+
     if (!hasAccess) {
       return {
         success: false,
-        message: "You do not have access to this lesson",
+        status: 403,
+        message: "Unauthorized access to this lesson",
       };
     }
+
     return {
       success: true,
+      status: 200,
       data: {
         id: lesson.id,
         title: lesson.title,
@@ -81,12 +90,11 @@ export const getLessonById = async (
       },
     };
   } catch (error: unknown) {
+    console.error("failed to get lesson details", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while fetching the lesson",
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };

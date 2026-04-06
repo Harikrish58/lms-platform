@@ -27,19 +27,20 @@ export async function POST(
     if (!result.success) {
       return NextResponse.json(
         { success: false, message: result.message },
-        { status: 400 },
+        { status: result.status || 400 },
       );
     }
+
     return NextResponse.json(
       { success: true, message: result.message, data: result.data },
       { status: 201 },
     );
   } catch (error: unknown) {
+    console.error("error during course enrollment in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error ? error.message : "Error enrolling in course",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );

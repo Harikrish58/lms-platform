@@ -12,6 +12,7 @@ export async function GET(
     if (!auth.success) {
       return auth.error;
     }
+
     const { courseId } = await params;
 
     if (!courseId) {
@@ -29,22 +30,17 @@ export async function GET(
       auth.user.id,
       auth.user.role,
     );
+
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
           message: result.message,
         },
-        {
-          status:
-            result.message === "Course not found"
-              ? 404
-              : result.message === "You do not have access to this course"
-                ? 403
-                : 400,
-        },
+        { status: result.status || 400 },
       );
     }
+
     return NextResponse.json(
       {
         success: true,
@@ -53,13 +49,11 @@ export async function GET(
       { status: 200 },
     );
   } catch (error: unknown) {
+    console.error("error fetching course progress in route handler", error);
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Error fetching course progress",
+        message: "Internal Server Error",
       },
       { status: 500 },
     );

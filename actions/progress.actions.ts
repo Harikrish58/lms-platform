@@ -5,6 +5,7 @@ import { canAccessCourse } from "./enrollment.actions";
 type MarkLessonCompleteResponse =
   | {
       success: true;
+      status: number;
       message: string;
       data: {
         completed: boolean;
@@ -12,6 +13,7 @@ type MarkLessonCompleteResponse =
     }
   | {
       success: false;
+      status: number;
       message: string;
     };
 
@@ -24,6 +26,7 @@ export const markLessonComplete = async (
     if (!lessonId) {
       return {
         success: false,
+        status: 400,
         message: "Lesson ID is required",
       };
     }
@@ -43,6 +46,7 @@ export const markLessonComplete = async (
     if (!lesson) {
       return {
         success: false,
+        status: 404,
         message: "Lesson not found",
       };
     }
@@ -50,7 +54,8 @@ export const markLessonComplete = async (
     if (!lesson.section) {
       return {
         success: false,
-        message: "Lesson is not associated with any section",
+        status: 500,
+        message: "Internal Server Error",
       };
     }
 
@@ -60,7 +65,8 @@ export const markLessonComplete = async (
     if (!hasAccess) {
       return {
         success: false,
-        message: "You do not have access to this course",
+        status: 403,
+        message: "Unauthorized access to this lesson",
       };
     }
 
@@ -80,20 +86,21 @@ export const markLessonComplete = async (
         completed: true,
       },
     });
+
     return {
       success: true,
+      status: 200,
       message: "Lesson marked as completed",
       data: {
         completed: progress.completed,
       },
     };
   } catch (error: unknown) {
+    console.error("error updating lesson completion status", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Error marking lesson as complete",
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
@@ -101,6 +108,7 @@ export const markLessonComplete = async (
 type GetCourseProgressResponse =
   | {
       success: true;
+      status: number;
       data: {
         totalLessons: number;
         completedLessons: number;
@@ -110,6 +118,7 @@ type GetCourseProgressResponse =
     }
   | {
       success: false;
+      status: number;
       message: string;
     };
 
@@ -122,6 +131,7 @@ export const getCourseProgress = async (
     if (!courseId) {
       return {
         success: false,
+        status: 400,
         message: "Course ID is required",
       };
     }
@@ -132,9 +142,11 @@ export const getCourseProgress = async (
         id: true,
       },
     });
+
     if (!course) {
       return {
         success: false,
+        status: 404,
         message: "Course not found",
       };
     }
@@ -143,7 +155,8 @@ export const getCourseProgress = async (
     if (!hasAccess) {
       return {
         success: false,
-        message: "You do not have access to this course",
+        status: 403,
+        message: "Unauthorized access to this course",
       };
     }
 
@@ -159,16 +172,16 @@ export const getCourseProgress = async (
     });
 
     const lessonIds = lessons.map((lesson) => lesson.id);
-
     const totalLessons = lessonIds.length;
 
     if (totalLessons === 0) {
       return {
         success: true,
+        status: 200,
         data: {
           totalLessons: 0,
           completedLessons: 0,
-          progressPercentage: 100,
+          progressPercentage: 0,
           completedLessonIds: [],
         },
       };
@@ -194,8 +207,10 @@ export const getCourseProgress = async (
     const progressPercentage = Math.round(
       (completedCount / totalLessons) * 100,
     );
+
     return {
       success: true,
+      status: 200,
       data: {
         totalLessons,
         completedLessons: completedCount,
@@ -204,12 +219,11 @@ export const getCourseProgress = async (
       },
     };
   } catch (error: unknown) {
+    console.error("failed to calculate course progress", error);
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Error fetching course progress",
+      status: 500,
+      message: "Internal Server Error",
     };
   }
 };
