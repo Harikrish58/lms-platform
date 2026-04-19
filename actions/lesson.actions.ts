@@ -6,6 +6,11 @@ import {
   ReorderLessonsSchema,
   UpdateLessonSchema,
 } from "@/schemas/lesson.Schema";
+import { deleteFromS3, uploadToS3 } from "@/lib/utils/s3Upload";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "@/lib/utils/cloudinaryUpload";
 
 type GetLessonByIdResponse =
   | {
@@ -55,7 +60,7 @@ export const getLessonById = async (
       },
     });
 
-    if (!lesson) {
+    if (!lesson || !lesson.section) {
       return {
         success: false,
         status: 404,
@@ -63,17 +68,11 @@ export const getLessonById = async (
       };
     }
 
-    if (!lesson.section) {
-      return {
-        success: false,
-        status: 500,
-        message: "Internal Server Error",
-      };
-    }
-
-    const courseId = lesson.section.courseId;
-
-    const hasAccess = await canAccessCourse(userId, role, courseId);
+    const hasAccess = await canAccessCourse(
+      userId,
+      role,
+      lesson.section.courseId,
+    );
 
     if (!hasAccess) {
       return {
@@ -95,7 +94,7 @@ export const getLessonById = async (
       },
     };
   } catch (error: unknown) {
-    console.error("failed to get lesson details", error);
+    console.error(error);
     return {
       success: false,
       status: 500,
@@ -111,8 +110,8 @@ type CreateLessonResponse =
       data: {
         id: string;
         title: string;
-        description: string;
-        videoUrl: string;
+        description: string | null;
+        videoUrl: string | null;
         resources?: string | null;
         order: number;
         sectionId: string;
@@ -130,7 +129,16 @@ export const createLesson = async (
   userId: string,
   role: Role,
   body: unknown,
+  files: {
+    video?: File;
+    thumbnail?: File;
+    pdf?: File;
+  },
 ): Promise<CreateLessonResponse> => {
+  let uploadedS3Key: string | null = null;
+  let uploadedThumbId: string | null = null;
+  let uploadedPdfId: string | null = null;
+
   try {
     if (!sectionId) {
       return {
@@ -139,8 +147,8 @@ export const createLesson = async (
         message: "Section ID is required",
       };
     }
-    const parsed = CreateLessonSchema.safeParse(body);
 
+    const parsed = CreateLessonSchema.safeParse(body);
     if (!parsed.success) {
       return {
         success: false,
@@ -150,15 +158,11 @@ export const createLesson = async (
       };
     }
 
-    const { title, description, videoUrl, resources } = parsed.data;
-
     const section = await prisma.section.findUnique({
       where: { id: sectionId },
       include: {
         course: {
-          select: {
-            instructorId: true,
-          },
+          select: { instructorId: true },
         },
       },
     });
@@ -179,22 +183,54 @@ export const createLesson = async (
       };
     }
 
+    const videoFile = files.video;
+    if (!videoFile) {
+      return {
+        success: false,
+        status: 400,
+        message: "Video file is required",
+      };
+    }
+
     const lastLesson = await prisma.lesson.findFirst({
-      where: { sectionId: sectionId },
+      where: { sectionId },
       orderBy: { order: "desc" },
       select: { order: true },
     });
 
     const newOrder = lastLesson ? lastLesson.order + 1 : 1;
 
+    const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
+    const s3Result = await uploadToS3(videoBuffer, videoFile.type);
+    uploadedS3Key = s3Result.key;
+
+    if (files.thumbnail) {
+      const res = await uploadToCloudinary(files.thumbnail, "lessons");
+      uploadedThumbId = res.public_id;
+    }
+
+    if (files.pdf) {
+      const res = await uploadToCloudinary(files.pdf, "lessons");
+      uploadedPdfId = res.public_id;
+    }
+
     const lesson = await prisma.lesson.create({
       data: {
-        title,
-        description,
-        videoUrl,
-        resources: resources || null,
+        title: parsed.data.title,
+        description: parsed.data.description,
+        videoUrl: s3Result.url,
+        videoKey: s3Result.key,
+        thumbnailUrl: uploadedThumbId
+          ? `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${uploadedThumbId}`
+          : null,
+        thumbnailPublicId: uploadedThumbId,
+        pdfUrl: uploadedPdfId
+          ? `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${uploadedPdfId}`
+          : null,
+        pdfPublicId: uploadedPdfId,
+        resources: parsed.data.resources || null,
         order: newOrder,
-        sectionId: sectionId,
+        sectionId,
       },
     });
 
@@ -212,7 +248,11 @@ export const createLesson = async (
       },
     };
   } catch (error: unknown) {
-    console.error("failed to create lesson", error);
+    if (uploadedS3Key) await deleteFromS3(uploadedS3Key);
+    if (uploadedThumbId) await deleteFromCloudinary(uploadedThumbId);
+    if (uploadedPdfId) await deleteFromCloudinary(uploadedPdfId);
+
+    console.error(error);
     return {
       success: false,
       status: 500,
@@ -315,8 +355,8 @@ type UpdateLessonResponse =
       data: {
         id: string;
         title: string;
-        description: string;
-        videoUrl: string;
+        description: string | null;
+        videoUrl: string | null;
         resources: string | null;
         order: number;
         sectionId: string;
@@ -334,6 +374,11 @@ export const updateLesson = async (
   userId: string,
   role: Role,
   body: unknown,
+  files?: {
+    video?: File;
+    thumbnail?: File;
+    pdf?: File;
+  },
 ): Promise<UpdateLessonResponse> => {
   try {
     if (!lessonId) {
@@ -375,14 +420,6 @@ export const updateLesson = async (
       };
     }
 
-    if (!existingLesson.section) {
-      return {
-        success: false,
-        status: 500,
-        message: "Section not found",
-      };
-    }
-
     if (
       role !== Role.ADMIN &&
       existingLesson.section.course.instructorId !== userId
@@ -394,19 +431,37 @@ export const updateLesson = async (
       };
     }
 
-    const { title, description, videoUrl, resources } = parsed.data;
+    const { title, description, resources } = parsed.data;
 
-    if (
-      title === undefined &&
-      description === undefined &&
-      videoUrl === undefined &&
-      resources === undefined
-    ) {
-      return {
-        success: false,
-        status: 400,
-        message: "No changes provided",
-      };
+    let videoUrl = existingLesson.videoUrl;
+    let videoKey = existingLesson.videoKey;
+    let thumbnailUrl = existingLesson.thumbnailUrl;
+    let thumbnailPublicId = existingLesson.thumbnailPublicId;
+    let pdfUrl = existingLesson.pdfUrl;
+    let pdfPublicId = existingLesson.pdfPublicId;
+
+    if (files?.video) {
+      const buffer = Buffer.from(await files.video.arrayBuffer());
+      const s3Result = await uploadToS3(buffer, files.video.type);
+      if (existingLesson.videoKey) await deleteFromS3(existingLesson.videoKey);
+      videoUrl = s3Result.url;
+      videoKey = s3Result.key;
+    }
+
+    if (files?.thumbnail) {
+      const result = await uploadToCloudinary(files.thumbnail, "lessons");
+      if (existingLesson.thumbnailPublicId)
+        await deleteFromCloudinary(existingLesson.thumbnailPublicId);
+      thumbnailUrl = result.url;
+      thumbnailPublicId = result.public_id;
+    }
+
+    if (files?.pdf) {
+      const result = await uploadToCloudinary(files.pdf, "lessons");
+      if (existingLesson.pdfPublicId)
+        await deleteFromCloudinary(existingLesson.pdfPublicId);
+      pdfUrl = result.url;
+      pdfPublicId = result.public_id;
     }
 
     const updatedLesson = await prisma.lesson.update({
@@ -414,7 +469,12 @@ export const updateLesson = async (
       data: {
         title: title ?? existingLesson.title,
         description: description ?? existingLesson.description,
-        videoUrl: videoUrl ?? existingLesson.videoUrl,
+        videoUrl,
+        videoKey,
+        thumbnailUrl,
+        thumbnailPublicId,
+        pdfUrl,
+        pdfPublicId,
         resources: resources ?? existingLesson.resources,
       },
     });
@@ -434,7 +494,7 @@ export const updateLesson = async (
       },
     };
   } catch (error: unknown) {
-    console.error("failed to update lesson", error);
+    console.error(error);
     return {
       success: false,
       status: 500,
@@ -490,14 +550,6 @@ export const deleteLesson = async (
       };
     }
 
-    if (!lesson.section) {
-      return {
-        success: false,
-        status: 500,
-        message: "Internal Server Error",
-      };
-    }
-
     if (role !== Role.ADMIN && lesson.section.course.instructorId !== userId) {
       return {
         success: false,
@@ -505,6 +557,15 @@ export const deleteLesson = async (
         message: "Unauthorized to delete lesson",
       };
     }
+
+    const deleteTasks = [];
+    if (lesson.videoKey) deleteTasks.push(deleteFromS3(lesson.videoKey));
+    if (lesson.thumbnailPublicId)
+      deleteTasks.push(deleteFromCloudinary(lesson.thumbnailPublicId));
+    if (lesson.pdfPublicId)
+      deleteTasks.push(deleteFromCloudinary(lesson.pdfPublicId));
+
+    await Promise.all(deleteTasks);
 
     await prisma.lesson.delete({
       where: { id: lessonId },
@@ -516,7 +577,7 @@ export const deleteLesson = async (
       message: "Lesson deleted successfully",
     };
   } catch (error: unknown) {
-    console.error("failed to delete lesson", error);
+    console.error(error);
     return {
       success: false,
       status: 500,
@@ -596,7 +657,6 @@ export const reorderLessons = async (
     });
 
     const existingIds = new Set(existingLessons.map((l) => l.id));
-
     const isValid = lessonIds.every((id) => existingIds.has(id));
 
     if (!isValid || lessonIds.length !== existingIds.size) {
@@ -622,7 +682,7 @@ export const reorderLessons = async (
       message: "Lessons reordered successfully",
     };
   } catch (error: unknown) {
-    console.error("failed to reorder lessons", error);
+    console.error(error);
     return {
       success: false,
       status: 500,

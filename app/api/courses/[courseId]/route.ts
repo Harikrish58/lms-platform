@@ -61,6 +61,18 @@ export async function PATCH(
   { params }: { params: Promise<{ courseId: string }> },
 ) {
   try {
+    const { courseId } = await params;
+
+    if (!courseId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
     const auth = await authMiddleware(request);
 
     if (!auth.success) {
@@ -75,18 +87,6 @@ export async function PATCH(
           message: roleCheck.message || "Unauthorized",
         },
         { status: roleCheck.status || 403 },
-      );
-    }
-
-    const { courseId } = await params;
-
-    if (!courseId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Course ID is required",
-        },
-        { status: 400 },
       );
     }
 

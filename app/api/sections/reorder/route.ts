@@ -26,10 +26,20 @@ export async function PATCH(request: Request) {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get("courseId");
 
+    if (!courseId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
     const body = await request.json();
 
     const result = await reOrderSections(
-      courseId || "",
+      courseId,
       auth.user.id,
       auth.user.role,
       body,
@@ -53,7 +63,7 @@ export async function PATCH(request: Request) {
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error fetching sections in route handler", error);
+    console.error("error reordering sections in route handler", error);
     return NextResponse.json(
       {
         success: false,

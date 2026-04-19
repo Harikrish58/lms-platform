@@ -7,12 +7,20 @@ export async function POST(
   { params }: { params: Promise<{ courseId: string }> },
 ) {
   try {
+    const { courseId } = await params;
+
+    if (!courseId) {
+      return NextResponse.json(
+        { success: false, message: "Course ID is required" },
+        { status: 400 },
+      );
+    }
+
     const auth = await authMiddleware(request);
     if (!auth.success) {
       return auth.error;
     }
 
-    const { courseId } = await params;
     const body = await request.json();
 
     const result = await createReview(
@@ -58,6 +66,14 @@ export async function GET(
 ) {
   try {
     const { courseId } = await params;
+
+    if (!courseId) {
+      return NextResponse.json(
+        { success: false, message: "Course ID is required" },
+        { status: 400 },
+      );
+    }
+
     const { searchParams } = new URL(request.url);
 
     const result = await getCourseReviews(courseId, {

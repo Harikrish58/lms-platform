@@ -61,12 +61,24 @@ model Section {
 }
 
 model Lesson {
-  id          String  @id @default(uuid()) // Primary key
+  id          String @id @default(uuid()) // Primary key
   title       String
   description String
-  videoUrl    String // Stored video location (S3/Cloudinary)
-  resources   String? // Optional additional materials (JSON string with links)
-  order       Int     @default(0) // Order of lessons within a section
+
+  // Video(S3)
+  videoUrl String // Stored video location (S3/Cloudinary)
+  videoKey String? // Required for deletion
+
+  // Thumbnail (Cloudinary)
+  thumbnailUrl      String?
+  thumbnailPublicId String?
+
+  // PDF (Cloudinary)
+  pdfUrl      String?
+  pdfPublicId String?
+
+  resources String? // Optional additional materials (JSON string with links)
+  order     Int     @default(0) // Order of lessons within a section
 
   // Foreign Key
   sectionId String // References Section.id

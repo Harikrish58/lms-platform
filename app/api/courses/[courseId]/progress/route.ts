@@ -7,12 +7,6 @@ export async function GET(
   { params }: { params: Promise<{ courseId: string }> },
 ) {
   try {
-    const auth = await authMiddleware(request);
-
-    if (!auth.success) {
-      return auth.error;
-    }
-
     const { courseId } = await params;
 
     if (!courseId) {
@@ -23,6 +17,12 @@ export async function GET(
         },
         { status: 400 },
       );
+    }
+
+    const auth = await authMiddleware(request);
+
+    if (!auth.success) {
+      return auth.error;
     }
 
     const result = await getCourseProgress(

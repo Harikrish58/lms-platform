@@ -26,10 +26,20 @@ export async function PATCH(request: Request) {
     const { searchParams } = new URL(request.url);
     const sectionId = searchParams.get("sectionId");
 
+    if (!sectionId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Section ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
     const body = await request.json();
 
     const result = await reorderLessons(
-      sectionId || "",
+      sectionId,
       auth.user.id,
       auth.user.role,
       body,
