@@ -58,23 +58,22 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const page = Math.max(1, Number(searchParams.get("page")) || 1);
-    const limit = Math.max(1, Number(searchParams.get("limit")) || 10);
+    const parseNum = (key: string) => {
+      const val = searchParams.get(key);
+      return val ? Number(val) : undefined;
+    };
+
+    const page = Math.max(1, parseNum("page") || 1);
+    const limit = Math.max(1, parseNum("limit") || 10);
     const safeLimit = Math.min(limit, 50);
 
     const result = await getCourses({
       page,
       limit: safeLimit,
       search: searchParams.get("search") || undefined,
-      minPrice: searchParams.get("minPrice")
-        ? Number(searchParams.get("minPrice"))
-        : undefined,
-      maxPrice: searchParams.get("maxPrice")
-        ? Number(searchParams.get("maxPrice"))
-        : undefined,
-      minRating: searchParams.get("minRating")
-        ? Number(searchParams.get("minRating"))
-        : undefined,
+      minPrice: parseNum("minPrice"),
+      maxPrice: parseNum("maxPrice"),
+      minRating: parseNum("minRating"),
     });
 
     if (!result.success) {

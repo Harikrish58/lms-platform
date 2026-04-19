@@ -9,24 +9,30 @@ export async function PATCH(
   { params }: { params: Promise<{ courseId: string }> },
 ) {
   try {
+    const { courseId } = await params;
+
+    if (!courseId) {
+      return NextResponse.json(
+        { success: false, message: "Course ID is required" },
+        { status: 400 },
+      );
+    }
+
     const auth = await authMiddleware(request);
     if (!auth.success) {
       return auth.error;
     }
 
-    // restrict this endpoint to instructors and admins
     const roleCheck = requireRole(auth.user.role, [
       Role.INSTRUCTOR,
       Role.ADMIN,
     ]);
     if (!roleCheck.success) {
       return NextResponse.json(
-        { success: false, message: "unauthorized" },
+        { success: false, message: "Unauthorized" },
         { status: 403 },
       );
     }
-
-    const { courseId } = await params;
 
     const result = await toggleCoursePublishStatus(
       courseId,

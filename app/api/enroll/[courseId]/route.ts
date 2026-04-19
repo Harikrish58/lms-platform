@@ -7,12 +7,6 @@ export async function POST(
   { params }: { params: Promise<{ courseId: string }> },
 ) {
   try {
-    const auth = await authMiddleware(request);
-
-    if (!auth.success) {
-      return auth.error;
-    }
-
     const { courseId } = await params;
 
     if (!courseId) {
@@ -20,6 +14,12 @@ export async function POST(
         { success: false, message: "Course ID is required" },
         { status: 400 },
       );
+    }
+
+    const auth = await authMiddleware(request);
+
+    if (!auth.success) {
+      return auth.error;
     }
 
     const result = await enrollInCourse(auth.user.id, courseId);

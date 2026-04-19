@@ -9,6 +9,18 @@ export async function PATCH(
   { params }: { params: Promise<{ sectionId: string }> },
 ) {
   try {
+    const { sectionId } = await params;
+
+    if (!sectionId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Section ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
     const auth = await authMiddleware(request);
 
     if (!auth.success) {
@@ -23,18 +35,6 @@ export async function PATCH(
           message: roleCheck.message || "Unauthorized",
         },
         { status: roleCheck.status || 403 },
-      );
-    }
-
-    const { sectionId } = await params;
-
-    if (!sectionId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Section ID is required",
-        },
-        { status: 400 },
       );
     }
 
@@ -83,6 +83,18 @@ export async function DELETE(
   { params }: { params: Promise<{ sectionId: string }> },
 ) {
   try {
+    const { sectionId } = await params;
+
+    if (!sectionId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Section ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
     const auth = await authMiddleware(request);
 
     if (!auth.success) {
@@ -97,17 +109,6 @@ export async function DELETE(
           message: roleCheck.message || "Unauthorized",
         },
         { status: roleCheck.status || 403 },
-      );
-    }
-    const { sectionId } = await params;
-
-    if (!sectionId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Section ID is required",
-        },
-        { status: 400 },
       );
     }
 

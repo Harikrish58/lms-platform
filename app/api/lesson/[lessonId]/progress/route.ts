@@ -7,12 +7,6 @@ export async function POST(
   { params }: { params: Promise<{ lessonId: string }> },
 ) {
   try {
-    const auth = await authMiddleware(request);
-
-    if (!auth.success) {
-      return auth.error;
-    }
-
     const { lessonId } = await params;
 
     if (!lessonId) {
@@ -23,6 +17,12 @@ export async function POST(
         },
         { status: 400 },
       );
+    }
+
+    const auth = await authMiddleware(request);
+
+    if (!auth.success) {
+      return auth.error;
     }
 
     const result = await markLessonComplete(

@@ -7,14 +7,21 @@ export async function PATCH(
   { params }: { params: Promise<{ reviewId: string }> },
 ) {
   try {
+    const { reviewId } = await params;
+
+    if (!reviewId) {
+      return NextResponse.json(
+        { success: false, message: "Review ID is required" },
+        { status: 400 },
+      );
+    }
+
     const auth = await authMiddleware(request);
     if (!auth.success) {
       return auth.error;
     }
 
-    const { reviewId } = await params;
     const body = await request.json();
-
     const result = await updateReview(reviewId, auth.user.id, body);
 
     if (!result.success) {
@@ -52,12 +59,19 @@ export async function DELETE(
   { params }: { params: Promise<{ reviewId: string }> },
 ) {
   try {
+    const { reviewId } = await params;
+
+    if (!reviewId) {
+      return NextResponse.json(
+        { success: false, message: "Review ID is required" },
+        { status: 400 },
+      );
+    }
+
     const auth = await authMiddleware(request);
     if (!auth.success) {
       return auth.error;
     }
-
-    const { reviewId } = await params;
 
     const result = await deleteReview(reviewId, auth.user.id);
 

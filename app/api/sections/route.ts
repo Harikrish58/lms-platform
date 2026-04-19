@@ -1,8 +1,4 @@
-import {
-  createSection,
-  getSectionsByCourse,
-  updateSection,
-} from "@/actions/section.actions";
+import { createSection, getSectionsByCourse } from "@/actions/section.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
 import { requireRole } from "@/lib/utils/authorize";
 import { Role } from "@prisma/client";
@@ -30,10 +26,17 @@ export async function POST(request: Request) {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get("courseId");
 
+    if (!courseId) {
+      return NextResponse.json(
+        { success: false, message: "Course ID is required" },
+        { status: 400 },
+      );
+    }
+
     const body = await request.json();
 
     const result = await createSection(
-      courseId || "",
+      courseId,
       auth.user.id,
       auth.user.role,
       body,
@@ -49,6 +52,7 @@ export async function POST(request: Request) {
         { status: result.status || 400 },
       );
     }
+
     return NextResponse.json(
       {
         success: true,
@@ -58,11 +62,13 @@ export async function POST(request: Request) {
     );
   } catch (error: unknown) {
     console.error("error creating section in route handler:", error);
-    return NextResponse.json({
-      success: false,
-      status: 500,
-      message: "An error occurred while creating the section.",
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Internal Server Error",
+      },
+      { status: 500 },
+    );
   }
 }
 
@@ -71,7 +77,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get("courseId");
 
-    const result = await getSectionsByCourse(courseId || "");
+    if (!courseId) {
+      return NextResponse.json(
+        { success: false, message: "Course ID is required" },
+        { status: 400 },
+      );
+    }
+
+    const result = await getSectionsByCourse(courseId);
 
     if (!result.success) {
       return NextResponse.json(
