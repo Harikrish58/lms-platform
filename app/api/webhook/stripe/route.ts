@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   if (!signature) {
     return NextResponse.json(
       { success: false, message: "Missing signature" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -22,17 +22,17 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET!,
     );
   } catch (error) {
     console.error("Webhook signature verification failed:", error);
     return NextResponse.json(
       { success: false, message: "Invalid signature" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  // Handle the event
+  // Handle event
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
@@ -45,7 +45,13 @@ export async function POST(request: Request) {
     }
 
     try {
-        // Prevent double enrollment
+      // Mark payment as COMPLETED
+      await prisma.payment.update({
+        where: { stripeSessionId: session.id },
+        data: { status: "COMPLETED" },
+      });
+
+      // Prevent double enrollment
       const existing = await prisma.enrollment.findUnique({
         where: {
           userId_courseId: {
@@ -55,6 +61,7 @@ export async function POST(request: Request) {
         },
       });
 
+      // Enroll user
       if (!existing) {
         await prisma.enrollment.create({
           data: {
@@ -64,8 +71,7 @@ export async function POST(request: Request) {
         });
       }
 
-      console.log("User enrolled via webhook ");
-
+      console.log("Payment completed + user enrolled");
     } catch (error) {
       console.error("Error processing webhook:", error);
     }

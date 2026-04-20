@@ -3,7 +3,7 @@ import { stripe } from "@/lib/stripe";
 
 export const createCheckoutSession = async (
   courseId: string,
-  userId: string
+  userId: string,
 ) => {
   try {
     const course = await prisma.course.findUnique({
@@ -18,7 +18,7 @@ export const createCheckoutSession = async (
       };
     }
 
-    const existing = await prisma.enrollment.findUnique({
+    const existingEnrollment = await prisma.enrollment.findUnique({
       where: {
         userId_courseId: {
           userId,
@@ -27,10 +27,27 @@ export const createCheckoutSession = async (
       },
     });
 
-    if (existing) {
+    if (existingEnrollment) {
       return {
         success: false,
         message: "Already enrolled",
+        status: 400,
+      };
+    }
+
+    // Prevent duplicate payment sessions (optional but good practice)
+    const existingPayment = await prisma.payment.findFirst({
+      where: {
+        userId,
+        courseId,
+        status: "PENDING",
+      },
+    });
+
+    if (existingPayment) {
+      return {
+        success: false,
+        message: "Payment already in progress",
         status: 400,
       };
     }
@@ -68,6 +85,17 @@ export const createCheckoutSession = async (
         status: 500,
       };
     }
+
+    await prisma.payment.create({
+      data: {
+        userId,
+        courseId,
+        stripeSessionId: session.id,
+        amount: Math.round(course.price * 100),
+        currency: "pln",
+        status: "PENDING",
+      },
+    });
 
     return {
       success: true,

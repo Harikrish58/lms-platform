@@ -21,6 +21,7 @@ model User {
   enrollments Enrollment[] // Courses this user joined
   reviews     Review[] // Reviews written by user
   progress    Progress[] // Lesson completion tracking
+  payments    Payment[] // Payment tracking
 }
 
 model Course {
@@ -45,6 +46,7 @@ model Course {
   sections    Section[] // Course → many sections
   enrollments Enrollment[] // Users enrolled in this course
   reviews     Review[] // Reviews for this course
+  payments    Payment[] // Payment tracking
 }
 
 model Section {
@@ -143,4 +145,29 @@ enum Role {
   STUDENT
   INSTRUCTOR
   ADMIN
+}
+
+model Payment {
+  id String @id @default(uuid())
+
+  userId   String
+  courseId String
+
+  stripeSessionId String @unique
+
+  amount   Int
+  currency String
+  status   PaymentStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Restrict)
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
 }
