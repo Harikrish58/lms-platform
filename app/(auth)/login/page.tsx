@@ -39,7 +39,7 @@ export default function LoginPage() {
       if (res.success) {
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
-        toast.success("Welcome back! 👋");
+        toast.success("Welcome back!");
         router.push("/courses");
       } else {
         toast.error(res.message || "Login failed");

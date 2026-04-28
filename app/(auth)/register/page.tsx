@@ -44,7 +44,7 @@ export default function RegisterPage() {
       const res = await registerUser(data);
 
       if (res.success) {
-        toast.success("Account created successfully! 🎉");
+        toast.success("Account created successfully!");
         router.push("/login");
       } else {
         toast.error(res.message || "Registration failed");
@@ -181,7 +181,9 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   {...register("confirmPassword")}
                   className={`w-full pl-11 pr-4 py-3 bg-slate-50 border ${
-                    errors.confirmPassword ? "border-red-500" : "border-slate-200"
+                    errors.confirmPassword
+                      ? "border-red-500"
+                      : "border-slate-200"
                   } rounded-xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-600 outline-none transition-all placeholder:text-slate-400`}
                 />
               </div>
