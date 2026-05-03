@@ -24,11 +24,27 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
         env:
-          DATABASE_URL: "postgresql://dummy"
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
 
       - name: Build Next.js app
         run: npm run build
         env:
-          DATABASE_URL: "postgresql://dummy"
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/db"
           JWT_SECRET: "dummy"
+          JWT_EXPIRES_IN: "1d"
+
+          NEXT_PUBLIC_API_URL: "http://localhost:3000"
           NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+
+          STRIPE_SECRET_KEY: "dummy"
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "dummy"
+          STRIPE_WEBHOOK_SECRET: "dummy"
+
+          CLOUDINARY_CLOUD_NAME: "dummy"
+          CLOUDINARY_API_KEY: "dummy"
+          CLOUDINARY_API_SECRET: "dummy"
+
+          AWS_ACCESS_KEY_ID: "dummy"
+          AWS_SECRET_ACCESS_KEY: "dummy"
+          AWS_REGION: "eu-central-1"
+          AWS_BUCKET_NAME: "dummy"
