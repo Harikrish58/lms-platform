@@ -35,7 +35,22 @@ export const createCheckoutSession = async (
       };
     }
 
-    // Prevent duplicate payment sessions (optional but good practice)
+    if (course.price === 0) {
+      await prisma.enrollment.create({
+        data: {
+          userId,
+          courseId,
+        },
+      });
+
+      return {
+        success: true,
+        data: {
+          free: true,
+        },
+      };
+    }
+
     const existingPayment = await prisma.payment.findFirst({
       where: {
         userId,
@@ -55,7 +70,6 @@ export const createCheckoutSession = async (
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
-
       line_items: [
         {
           price_data: {
@@ -68,10 +82,8 @@ export const createCheckoutSession = async (
           quantity: 1,
         },
       ],
-
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-success`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-cancel`,
-
       metadata: {
         courseId,
         userId,

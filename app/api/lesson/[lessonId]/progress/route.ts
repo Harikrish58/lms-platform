@@ -1,4 +1,7 @@
-import { markLessonComplete } from "@/actions/progress.actions";
+import {
+  getCourseProgress,
+  markLessonComplete,
+} from "@/actions/progress.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
 import { NextResponse } from "next/server";
 
@@ -56,6 +59,42 @@ export async function POST(
         success: false,
         message: "Internal Server Error",
       },
+      { status: 500 },
+    );
+  }
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ courseId: string }> },
+) {
+  try {
+    const { courseId } = await params;
+
+    const auth = await authMiddleware(request);
+    if (!auth.success) return auth.error;
+
+    const result = await getCourseProgress(
+      courseId,
+      auth.user.id,
+      auth.user.role,
+    );
+
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, message: result.message },
+        { status: result.status },
+      );
+    }
+
+    return NextResponse.json(
+      { success: true, data: result.data },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("failed to get course progress in route handler", error);
+    return NextResponse.json(
+      { success: false, message: "Internal Server Error" },
       { status: 500 },
     );
   }
