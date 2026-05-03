@@ -111,12 +111,30 @@ export const getCourses = async ({
       prisma.course.count({ where }),
     ]);
 
+    const formattedCourses = courses.map((course) => ({
+      id: course.id,
+      title: course.title,
+      price: course.price,
+      thumbnail: course.thumbnail,
+      averageRating: course.averageRating,
+      totalReviews: course.totalReviews,
+
+      instructor: {
+        id: course.instructor.id,
+        name: course.instructor.name,
+        avatarUrl: course.instructor.avatarUrl,
+      },
+
+      enrollmentsCount: course._count.enrollments,
+      sectionsCount: course._count.sections,
+    }));
+
     const totalPages = Math.ceil(totalCourses / limit);
 
     return {
       success: true,
       status: 200,
-      data: courses,
+      data: formattedCourses,
       meta: {
         total: totalCourses,
         totalPages,
@@ -134,11 +152,40 @@ export const getCourses = async ({
   }
 };
 
+type CourseWithContent = {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  thumbnail: string | null;
+  averageRating: number;
+  totalReviews: number;
+
+  instructor: {
+    id: string;
+    name: string;
+    avatarUrl: string | null;
+  };
+
+  _count: {
+    enrollments: number;
+  };
+
+  sections: {
+    id: string;
+    title: string;
+    order: number;
+    lessons: {
+      id: string;
+      title: string;
+    }[];
+  }[];
+};
 type GetCourseByIdResponse =
   | {
       success: true;
       status: number;
-      data: Course;
+      data: CourseWithContent;
     }
   | {
       success: false;
@@ -159,6 +206,32 @@ export const getCourseById = async (
     }
     const course = await prisma.course.findUnique({
       where: { id },
+      include: {
+        instructor: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: true,
+          },
+        },
+        sections: {
+          orderBy: { order: "asc" },
+          include: {
+            lessons: {
+              orderBy: { order: "asc" },
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+          },
+        },
+      },
     });
     if (!course || !course.isPublished) {
       return {
