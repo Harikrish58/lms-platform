@@ -28,6 +28,7 @@ export async function PATCH(
     }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         {
@@ -68,6 +69,7 @@ export async function PATCH(
     );
   } catch (error: unknown) {
     console.error("error updating section in route handler", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -102,6 +104,7 @@ export async function DELETE(
     }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         {
@@ -112,7 +115,12 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteSection(sectionId, auth.user.id, auth.user.role);
+    const result = await deleteSection(
+      sectionId,
+      auth.user.id,
+      auth.user.role,
+    );
+
     if (!result.success) {
       return NextResponse.json(
         {
@@ -122,6 +130,7 @@ export async function DELETE(
         { status: result.status || 400 },
       );
     }
+
     return NextResponse.json(
       {
         success: true,
@@ -131,6 +140,7 @@ export async function DELETE(
     );
   } catch (error: unknown) {
     console.error("error deleting section in route handler", error);
+
     return NextResponse.json(
       {
         success: false,

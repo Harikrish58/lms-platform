@@ -11,7 +11,10 @@ export async function POST(
 
     if (!courseId) {
       return NextResponse.json(
-        { success: false, message: "Course ID is required" },
+        {
+          success: false,
+          message: "Course ID is required",
+        },
         { status: 400 },
       );
     }
@@ -22,21 +25,32 @@ export async function POST(
       return auth.error;
     }
 
-    const result = await enrollInCourse(auth.user.id, courseId);
+    const result = await enrollInCourse(
+      auth.user.id,
+      courseId,
+    );
 
     if (!result.success) {
       return NextResponse.json(
-        { success: false, message: result.message },
+        {
+          success: false,
+          message: result.message,
+        },
         { status: result.status || 400 },
       );
     }
 
     return NextResponse.json(
-      { success: true, message: result.message, data: result.data },
+      {
+        success: true,
+        message: result.message,
+        data: result.data,
+      },
       { status: 201 },
     );
   } catch (error: unknown) {
     console.error("error during course enrollment in route handler", error);
+
     return NextResponse.json(
       {
         success: false,

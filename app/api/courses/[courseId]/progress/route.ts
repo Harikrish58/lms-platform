@@ -50,6 +50,7 @@ export async function GET(
     );
   } catch (error: unknown) {
     console.error("error fetching course progress in route handler", error);
+
     return NextResponse.json(
       {
         success: false,

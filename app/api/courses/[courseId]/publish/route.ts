@@ -19,6 +19,7 @@ export async function PATCH(
     }
 
     const auth = await authMiddleware(request);
+
     if (!auth.success) {
       return auth.error;
     }
@@ -27,6 +28,7 @@ export async function PATCH(
       Role.INSTRUCTOR,
       Role.ADMIN,
     ]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
@@ -57,6 +59,7 @@ export async function PATCH(
     );
   } catch (error: unknown) {
     console.error("error in course publish route", error);
+
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 },

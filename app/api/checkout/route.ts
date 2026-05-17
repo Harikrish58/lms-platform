@@ -11,11 +11,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+
     const { courseId } = body;
 
     const result = await createCheckoutSession(
       courseId,
-      auth.user.id
+      auth.user.id,
     );
 
     if (!result.success) {
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
           success: false,
           message: result.message,
         },
-        { status: result.status || 400 }
+        { status: result.status || 400 },
       );
     }
 
@@ -33,9 +34,8 @@ export async function POST(request: Request) {
         success: true,
         data: result.data,
       },
-      { status: 200 }
+      { status: 200 },
     );
-
   } catch (error: unknown) {
     console.error("checkout route error:", error);
 
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         success: false,
         message: "Internal Server Error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

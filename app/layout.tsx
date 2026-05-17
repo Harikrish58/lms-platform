@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Providers from "./providers";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LMS Platform",
+  title: "NextEra | LMS Platform",
   description: "Modern Learning Management System built with Next.js",
 };
 
@@ -27,11 +29,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
       >
         <Providers>
           <Toaster position="top-right" />
-          {children}
+
+          <div className="flex flex-col min-h-screen">
+            <Navbar />
+
+            <main className="flex-1">
+              {children}
+            </main>
+
+            <Footer />
+          </div>
+
         </Providers>
       </body>
     </html>

@@ -46,6 +46,7 @@ export async function GET(
     );
   } catch (error: unknown) {
     console.error("error fetching course by id in route handler", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -80,6 +81,7 @@ export async function PATCH(
     }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         {
@@ -118,6 +120,7 @@ export async function PATCH(
     );
   } catch (error: unknown) {
     console.error("failed to patch course details", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -152,6 +155,7 @@ export async function DELETE(
     }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         {
@@ -162,7 +166,11 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteCourse(courseId, auth.user.id, auth.user.role);
+    const result = await deleteCourse(
+      courseId,
+      auth.user.id,
+      auth.user.role,
+    );
 
     if (!result.success) {
       return NextResponse.json(
@@ -183,6 +191,7 @@ export async function DELETE(
     );
   } catch (error: unknown) {
     console.error("error while deleting course in route handler", error);
+
     return NextResponse.json(
       {
         success: false,

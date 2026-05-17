@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         {
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     );
   } catch (error: unknown) {
     console.error("error creating section in route handler:", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -105,6 +107,7 @@ export async function GET(request: Request) {
     );
   } catch (error: unknown) {
     console.error("error fetching sections in route handler", error);
+
     return NextResponse.json(
       {
         success: false,

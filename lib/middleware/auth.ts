@@ -1,54 +1,76 @@
-import { Role } from "@prisma/client";
+import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-
-export interface AuthUser {
+type JwtPayload = {
   id: string;
+  role: string;
   email?: string;
-  role: Role;
-}
+};
 
-type AuthResult =
-  | {
-      success: true;
-      user: AuthUser;
-    }
-  | {
-      success: false;
-      error: NextResponse;
-    };
-
-export async function authMiddleware(request: Request): Promise<AuthResult> {
+export const verifyAuth = async () => {
   try {
-    const authHeader = request.headers.get("authorization");
+    const cookieStore = await cookies();
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return null;
+    }
+
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret) {
+      throw new Error("JWT_SECRET is missing from environment variables");
+    }
+
+    const decoded = jwt.verify(token, secret) as JwtPayload;
+
+    return decoded;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      console.warn("User session expired");
+    } else {
+      console.error("Auth verification error:", error);
+    }
+
+    return null;
+  }
+};
+
+export const authMiddleware = async (req: Request) => {
+  try {
+    const user = await verifyAuth();
+
+    if (!user) {
       return {
         success: false,
         error: NextResponse.json(
-          { success: false, message: "Unauthorized" },
+          {
+            success: false,
+            message: "Unauthorized",
+          },
           { status: 401 },
         ),
       };
     }
 
-    const token = authHeader.split(" ")[1];
-
-    const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
-
     return {
       success: true,
-      user: decoded,
+      user,
     };
-  } catch {
+  } catch (error) {
+    console.error("Authentication middleware error:", error);
+
     return {
       success: false,
       error: NextResponse.json(
-        { success: false, message: "Invalid or expired token" },
-        { status: 401 },
+        {
+          success: false,
+          message: "Internal Server Error",
+        },
+        { status: 500 },
       ),
     };
   }
-}
+};

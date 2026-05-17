@@ -54,6 +54,7 @@ export async function POST(
     );
   } catch (error: unknown) {
     console.error("failed to mark lesson as complete in route handler", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -71,8 +72,21 @@ export async function GET(
   try {
     const { courseId } = await params;
 
+    if (!courseId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
     const auth = await authMiddleware(request);
-    if (!auth.success) return auth.error;
+
+    if (!auth.success) {
+      return auth.error;
+    }
 
     const result = await getCourseProgress(
       courseId,
@@ -82,19 +96,29 @@ export async function GET(
 
     if (!result.success) {
       return NextResponse.json(
-        { success: false, message: result.message },
-        { status: result.status },
+        {
+          success: false,
+          message: result.message,
+        },
+        { status: result.status || 400 },
       );
     }
 
     return NextResponse.json(
-      { success: true, data: result.data },
+      {
+        success: true,
+        data: result.data,
+      },
       { status: 200 },
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("failed to get course progress in route handler", error);
+
     return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
+      {
+        success: false,
+        message: "Internal Server Error",
+      },
       { status: 500 },
     );
   }

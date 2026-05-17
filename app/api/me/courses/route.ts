@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     );
   } catch (error: unknown) {
     console.error("error fetching user courses in route handler", error);
+
     return NextResponse.json(
       {
         success: false,

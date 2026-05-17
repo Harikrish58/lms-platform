@@ -6,11 +6,13 @@ import { requireRole } from "@/lib/utils/authorize";
 export async function POST(request: Request) {
   try {
     const auth = await authMiddleware(request);
+    
     if (!auth.success) {
       return auth.error;
     }
 
     const roleCheck = requireRole(auth.user.role, ["INSTRUCTOR"]);
+    
     if (!roleCheck.success) {
       return NextResponse.json(
         {
@@ -44,6 +46,7 @@ export async function POST(request: Request) {
     );
   } catch (error: unknown) {
     console.error("error while creating course in route handler", error);
+    
     return NextResponse.json(
       {
         success: false,
@@ -96,6 +99,7 @@ export async function GET(request: Request) {
     );
   } catch (error: unknown) {
     console.error("failed to fetch courses in route handler", error);
+    
     return NextResponse.json(
       {
         success: false,

@@ -47,19 +47,33 @@ export const registerUser = async (data: unknown) => {
       },
     });
 
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role: user.role,
+        email: user.email,
+      },
+      JWT_SECRET,
+      {
+        expiresIn: JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      },
+    );
+
     return {
       success: true,
       status: 201,
-      message: "User registered successfully",
-      data: {
+      token,
+      user: {
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
+        avatarUrl: user.avatarUrl,
       },
     };
   } catch (error: unknown) {
     console.error("failed to register new user", error);
+
     return {
       success: false,
       status: 500,
@@ -68,67 +82,72 @@ export const registerUser = async (data: unknown) => {
   }
 };
 
-export const loginUser = async (data: unknown) => {
+export const validateUserCredentials = async (data: unknown) => {
   try {
-    const parsed = loginSchema.safeParse(data);
+    const validatedData = loginSchema.safeParse(data);
 
-    if (!parsed.success) {
+    if (!validatedData.success) {
       return {
         success: false,
         status: 400,
-        message: parsed.error.issues[0].message || "Invalid input data",
+        message: "Invalid input",
       };
     }
 
-    const { email, password } = parsed.data;
+    const { email, password } = validatedData.data;
 
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true, password: true, role: true },
     });
 
-    if (!user) {
+    if (!user || !user.password) {
       return {
         success: false,
         status: 401,
-        message: "Invalid email or password",
+        message: "Invalid credentials",
       };
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user.password,
+    );
 
     if (!isPasswordValid) {
       return {
         success: false,
         status: 401,
-        message: "Invalid email or password",
+        message: "Invalid credentials",
       };
     }
 
     const token = jwt.sign(
       {
         id: user.id,
-        email: user.email,
         role: user.role,
+        email: user.email,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"] },
+      {
+        expiresIn: JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      },
     );
 
     return {
       success: true,
       status: 200,
-      data: {
-        token,
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-        },
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
       },
     };
-  } catch (error: unknown) {
-    console.error("login attempt failed", error);
+  } catch (error) {
+    console.error("Error validating user credentials:", error);
+
     return {
       success: false,
       status: 500,

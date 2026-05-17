@@ -1,8 +1,8 @@
-import { reOrderSections } from "@/actions/section.actions";
+import { NextResponse } from "next/server";
 import { authMiddleware } from "@/lib/middleware/auth";
 import { requireRole } from "@/lib/utils/authorize";
+import { reorderLessons } from "@/actions/lesson.actions";
 import { Role } from "@prisma/client";
-import { NextResponse } from "next/server";
 
 export async function PATCH(request: Request) {
   try {
@@ -13,6 +13,7 @@ export async function PATCH(request: Request) {
     }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         {
@@ -24,13 +25,13 @@ export async function PATCH(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const courseId = searchParams.get("courseId");
+    const sectionId = searchParams.get("sectionId");
 
-    if (!courseId) {
+    if (!sectionId) {
       return NextResponse.json(
         {
           success: false,
-          message: "Course ID is required",
+          message: "Section ID is required",
         },
         { status: 400 },
       );
@@ -38,8 +39,8 @@ export async function PATCH(request: Request) {
 
     const body = await request.json();
 
-    const result = await reOrderSections(
-      courseId,
+    const result = await reorderLessons(
+      sectionId,
       auth.user.id,
       auth.user.role,
       body,
@@ -50,6 +51,7 @@ export async function PATCH(request: Request) {
         {
           success: false,
           message: result.message,
+          errors: result.errors,
         },
         { status: result.status || 400 },
       );
@@ -63,7 +65,8 @@ export async function PATCH(request: Request) {
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error reordering sections in route handler", error);
+    console.error("error reordering lessons in route handler", error);
+
     return NextResponse.json(
       {
         success: false,

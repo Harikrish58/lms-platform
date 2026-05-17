@@ -17,6 +17,7 @@ export async function POST(
     }
 
     const auth = await authMiddleware(request);
+
     if (!auth.success) {
       return auth.error;
     }
@@ -50,6 +51,7 @@ export async function POST(
     );
   } catch (error: unknown) {
     console.error("error posting review to course", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -102,6 +104,7 @@ export async function GET(
     );
   } catch (error: unknown) {
     console.error("failed to get reviews for course", error);
+
     return NextResponse.json(
       {
         success: false,

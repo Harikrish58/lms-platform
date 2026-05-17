@@ -26,9 +26,16 @@ export async function GET(
     }
 
     const auth = await authMiddleware(request);
-    if (!auth.success) return auth.error;
 
-    const result = await getLessonById(lessonId, auth.user.id, auth.user.role);
+    if (!auth.success) {
+      return auth.error;
+    }
+
+    const result = await getLessonById(
+      lessonId,
+      auth.user.id,
+      auth.user.role,
+    );
 
     if (!result.success) {
       return NextResponse.json(
@@ -52,9 +59,13 @@ export async function GET(
 export async function POST(request: Request) {
   try {
     const auth = await authMiddleware(request);
-    if (!auth.success) return auth.error;
+
+    if (!auth.success) {
+      return auth.error;
+    }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         { success: false, message: roleCheck.message || "Unauthorized" },
@@ -75,6 +86,7 @@ export async function POST(request: Request) {
     const contentType = request.headers.get("content-type") || "";
 
     let body: unknown;
+
     let files: {
       video?: File;
       thumbnail?: File;
@@ -101,6 +113,7 @@ export async function POST(request: Request) {
             { status: 400 },
           );
         }
+
         if (videoFile.size > 200 * 1024 * 1024) {
           return NextResponse.json(
             { success: false, message: "Video too large (Max 200MB)" },
@@ -192,9 +205,13 @@ export async function PATCH(
     }
 
     const auth = await authMiddleware(request);
-    if (!auth.success) return auth.error;
+
+    if (!auth.success) {
+      return auth.error;
+    }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         { success: false, message: roleCheck.message || "Unauthorized" },
@@ -205,6 +222,7 @@ export async function PATCH(
     const contentType = request.headers.get("content-type") || "";
 
     let body: unknown;
+
     let files: {
       video?: File;
       thumbnail?: File;
@@ -231,6 +249,7 @@ export async function PATCH(
             { status: 400 },
           );
         }
+
         if (videoFile.size > 200 * 1024 * 1024) {
           return NextResponse.json(
             { success: false, message: "Video too large (Max 200MB)" },
@@ -326,9 +345,13 @@ export async function DELETE(
     }
 
     const auth = await authMiddleware(request);
-    if (!auth.success) return auth.error;
+
+    if (!auth.success) {
+      return auth.error;
+    }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         { success: false, message: roleCheck.message || "Unauthorized" },
@@ -336,7 +359,11 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteLesson(lessonId, auth.user.id, auth.user.role);
+    const result = await deleteLesson(
+      lessonId,
+      auth.user.id,
+      auth.user.role,
+    );
 
     if (!result.success) {
       return NextResponse.json(

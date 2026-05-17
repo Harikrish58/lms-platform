@@ -17,12 +17,18 @@ export async function PATCH(
     }
 
     const auth = await authMiddleware(request);
+
     if (!auth.success) {
       return auth.error;
     }
 
     const body = await request.json();
-    const result = await updateReview(reviewId, auth.user.id, body);
+
+    const result = await updateReview(
+      reviewId,
+      auth.user.id,
+      body,
+    );
 
     if (!result.success) {
       return NextResponse.json(
@@ -44,6 +50,7 @@ export async function PATCH(
     );
   } catch (error: unknown) {
     console.error("error updating review in route handler", error);
+
     return NextResponse.json(
       {
         success: false,
@@ -69,11 +76,15 @@ export async function DELETE(
     }
 
     const auth = await authMiddleware(request);
+
     if (!auth.success) {
       return auth.error;
     }
 
-    const result = await deleteReview(reviewId, auth.user.id);
+    const result = await deleteReview(
+      reviewId,
+      auth.user.id,
+    );
 
     if (!result.success) {
       return NextResponse.json(
@@ -94,6 +105,7 @@ export async function DELETE(
     );
   } catch (error: unknown) {
     console.error("failed to delete review in route handler", error);
+
     return NextResponse.json(
       {
         success: false,

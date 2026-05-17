@@ -1,9 +1,10 @@
 import { registerUser } from "@/actions/user.actions";
 import { NextResponse } from "next/server";
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
+    const body = await req.json();
+
     const result = await registerUser(body);
 
     if (!result.success) {
@@ -12,19 +13,34 @@ export async function POST(request: Request) {
           success: false,
           message: result.message,
         },
-        { status: result.status || 400 },
+        { status: result.status },
       );
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
-        data: result.data,
+        data: {
+          user: result.user,
+        },
       },
       { status: 201 },
     );
-  } catch (error: unknown) {
-    console.error("error during user registration in route handler", error);
+
+    response.cookies.set({
+      name: "token",
+      value: result.token!,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Registration error:", error);
+
     return NextResponse.json(
       {
         success: false,

@@ -5,10 +5,13 @@ import toast from "react-hot-toast";
 export const useLogout = () => {
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
+
     toast.success("Logged out successfully");
+
     router.replace("/login");
+    router.refresh();
   };
 
   return handleLogout;

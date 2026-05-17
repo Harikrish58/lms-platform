@@ -1,20 +1,24 @@
-export const getToken = () => {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+export const isAuthenticated = async () => {
+  try {
+    const response = await fetch("/api/me", {
+      method: "GET",
+      credentials: "include",
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error("Authentication check failed:", error);
+    return false;
+  }
 };
 
-export const getUser = () => {
-  if (typeof window === "undefined") return null;
-
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user) : null;
-};
-
-export const isAuthenticated = () => {
-  return !!getToken();
-};
-
-export const logout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+export const logout = async () => {
+  try {
+    await fetch("/api/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
 };
