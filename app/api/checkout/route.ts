@@ -4,7 +4,7 @@ import { createCheckoutSession } from "@/actions/payment.actions";
 
 export async function POST(request: Request) {
   try {
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;

@@ -4,7 +4,7 @@ import { authMiddleware } from "@/lib/middleware/auth";
 
 export async function GET(request: Request) {
   try {
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;

@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/utils/authorize";
 
 export async function POST(request: Request) {
   try {
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
     
     if (!auth.success) {
       return auth.error;

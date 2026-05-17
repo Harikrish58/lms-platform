@@ -25,7 +25,7 @@ export async function GET(
       );
     }
 
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;
@@ -58,7 +58,7 @@ export async function GET(
 
 export async function POST(request: Request) {
   try {
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;
@@ -204,7 +204,7 @@ export async function PATCH(
       );
     }
 
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;
@@ -344,7 +344,7 @@ export async function DELETE(
       );
     }
 
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;

@@ -6,7 +6,7 @@ import { Role } from "@prisma/client";
 
 export async function PATCH(request: Request) {
   try {
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;

@@ -1,14 +1,27 @@
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
+import { Role } from "@prisma/client";
 
-type JwtPayload = {
+export type JwtPayload = {
   id: string;
-  role: string;
+  role: Role;
   email?: string;
 };
 
-export const verifyAuth = async () => {
+type AuthSuccess = {
+  success: true;
+  user: JwtPayload;
+};
+
+type AuthFailure = {
+  success: false;
+  error: NextResponse;
+};
+
+type AuthResult = AuthSuccess | AuthFailure;
+
+export const verifyAuth = async (): Promise<JwtPayload | null> => {
   try {
     const cookieStore = await cookies();
 
@@ -38,7 +51,7 @@ export const verifyAuth = async () => {
   }
 };
 
-export const authMiddleware = async (req: Request) => {
+export const authMiddleware = async (): Promise<AuthResult> => {
   try {
     const user = await verifyAuth();
 

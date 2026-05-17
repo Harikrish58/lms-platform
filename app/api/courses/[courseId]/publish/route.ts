@@ -18,7 +18,7 @@ export async function PATCH(
       );
     }
 
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;

@@ -22,7 +22,7 @@ export async function POST(
       );
     }
 
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;
@@ -82,7 +82,7 @@ export async function GET(
       );
     }
 
-    const auth = await authMiddleware(request);
+    const auth = await authMiddleware();
 
     if (!auth.success) {
       return auth.error;
