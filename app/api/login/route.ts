@@ -1,4 +1,4 @@
-import { validateUserCredentials } from "@/actions/user.actions";
+import { validateUserCredentials, AUTH_COOKIE_MAX_AGE } from "@/actions/user.actions";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -32,8 +32,8 @@ export async function POST(req: Request) {
       value: result.token!,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24 * 7,
+      sameSite: "lax", // Switched from strict to lax for smooth external link sessions
+      maxAge: AUTH_COOKIE_MAX_AGE,
       path: "/",
     });
 

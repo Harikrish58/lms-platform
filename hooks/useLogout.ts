@@ -1,18 +1,30 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { logout } from "@/lib/auth";
+import { logout as apiLogout } from "@/lib/auth";
 import toast from "react-hot-toast";
 
 export const useLogout = () => {
+  const queryClient = useQueryClient();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = async (): Promise<void> => {
+    try {
+      // Clear session cookie on the server
+      await apiLogout();
 
-    toast.success("Logged out successfully");
+      // Clear all cached data in the client state
+      queryClient.clear();
 
-    router.replace("/login");
-    router.refresh();
+      toast.success("Logged out successfully");
+
+      // Redirect user back to the login page
+      router.push("/login");
+      router.refresh();
+    } catch (error: unknown) {
+      console.error("Logout error:", error);
+      toast.error("Failed to sign out.");
+    }
   };
 
-  return handleLogout;
+  return { handleLogout };
 };
