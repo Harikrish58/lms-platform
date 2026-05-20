@@ -1,145 +1,167 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { loginUser } from "@/services/auth.service";
-import toast from "react-hot-toast";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Mail, Lock, LogIn, Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { AxiosError } from "axios";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useQueryClient } from "@tanstack/react-query";
+import { Loader2, Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
+import axiosInstance from "@/lib/axios";
+import { isAxiosError } from "axios";
 
+// Validation Schema
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z
+    .string()
+    .min(6, { message: "Password must be at least 6 characters" }),
 });
 
-type LoginFormData = z.infer<typeof loginSchema>;
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const [globalError, setGlobalError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormValues) => {
     try {
-      setLoading(true);
-      const res = await loginUser(data);
+      setGlobalError(null);
 
-      if (res.success) {
-        toast.success("Welcome back!");
-        router.push("/courses");
-        router.refresh();
+      // 1. Authenticate user session via your backend
+      await axiosInstance.post("/api/login", data);
+
+      // 2. CRITICAL FIX: Destroy the unauthenticated cache state so the Navbar updates
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+
+      // 3. Route to the protected catalog and force Next.js to refresh server components
+      router.push("/courses");
+      router.refresh();
+    } catch (error) {
+      if (isAxiosError(error) && error.response) {
+        setGlobalError(
+          error.response.data.message || "Invalid email or password",
+        );
       } else {
-        toast.error(res.message || "Login failed");
+        setGlobalError("An unexpected error occurred. Please try again.");
       }
-    } catch (err: unknown) {
-      if (err instanceof AxiosError) {
-        toast.error(err.response?.data?.message || "Invalid credentials");
-      } else {
-        toast.error("Something went wrong");
-      }
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] px-4 py-12 relative overflow-hidden">
-      {/* Background ambient glow */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-100/50 blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-violet-100/50 blur-[120px]" />
-      </div>
+    <main className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        {/* Header Section */}
+        <div className="text-center">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+            Welcome back
+          </h2>
+          <p className="mt-2 text-sm text-slate-500 font-medium">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/register"
+              className="font-bold text-indigo-600 hover:text-indigo-500 transition-colors"
+            >
+              Sign up for free
+            </Link>
+          </p>
+        </div>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
-        className="w-full max-w-md z-10"
-      >
-        <div className="bg-white rounded-3xl shadow-2xl shadow-violet-100/50 border border-slate-100 p-8 md:p-10">
-          {/* Header */}
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-linear-to-r from-violet-600 to-indigo-600 text-white rounded-2xl shadow-lg shadow-violet-200 mb-6 transform -rotate-3">
-              <LogIn size={30} />
+        {/* Form Container */}
+        <div className="mt-8 bg-white py-8 px-4 shadow-sm border border-slate-200 rounded-2xl sm:px-10">
+          {/* Global Error Banner */}
+          {globalError && (
+            <div className="mb-6 bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle
+                className="text-rose-600 shrink-0 mt-0.5"
+                size={18}
+              />
+              <p className="text-sm font-bold text-rose-800">{globalError}</p>
             </div>
-            <h2 className="text-3xl font-extrabold tracking-tight bg-linear-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-              Welcome Back
-            </h2>
-            <p className="text-slate-500 mt-2 font-medium">
-              Sign in to continue your journey
-            </p>
-          </div>
+          )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Email Field */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 ml-1">
-                Email Address
+          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            {/* Email Input */}
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-sm font-bold text-slate-700 mb-2"
+              >
+                Email address
               </label>
-              <div className="relative group">
-                <Mail
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors"
-                  size={18}
-                />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-slate-400" />
+                </div>
                 <input
+                  id="email"
                   type="email"
-                  placeholder="name@example.com"
-                  disabled={loading}
+                  autoComplete="email"
                   {...register("email")}
-                  className={`w-full pl-11 pr-4 py-3 bg-slate-50 border ${
-                    errors.email ? "border-red-500" : "border-slate-200"
-                  } rounded-xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-600 outline-none transition-all placeholder:text-slate-400`}
+                  className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-4 transition-all ${
+                    errors.email
+                      ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                      : "border-slate-200 focus:border-indigo-600 focus:ring-indigo-600/20"
+                  }`}
+                  placeholder="you@example.com"
                 />
               </div>
               {errors.email && (
-                <p className="text-red-500 text-xs mt-1 ml-1 font-medium italic">
+                <p className="mt-2 text-xs font-bold text-rose-600">
                   {errors.email.message}
                 </p>
               )}
             </div>
 
-            {/* Password Field */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center px-1">
-                <label className="text-sm font-semibold text-slate-700">
+            {/* Password Input */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-bold text-slate-700"
+                >
                   Password
                 </label>
                 <Link
                   href="/forgot-password"
-                  className="text-xs font-bold text-violet-600 hover:text-indigo-700 transition-colors"
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-500"
                 >
-                  Forgot?
+                  Forgot password?
                 </Link>
               </div>
-              <div className="relative group">
-                <Lock
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors"
-                  size={18}
-                />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-slate-400" />
+                </div>
                 <input
+                  id="password"
                   type="password"
-                  placeholder="••••••••"
-                  disabled={loading}
+                  autoComplete="current-password"
                   {...register("password")}
-                  className={`w-full pl-11 pr-4 py-3 bg-slate-50 border ${
-                    errors.password ? "border-red-500" : "border-slate-200"
-                  } rounded-xl focus:ring-4 focus:ring-violet-500/10 focus:border-violet-600 outline-none transition-all placeholder:text-slate-400`}
+                  className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-4 transition-all ${
+                    errors.password
+                      ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                      : "border-slate-200 focus:border-indigo-600 focus:ring-indigo-600/20"
+                  }`}
+                  placeholder="••••••••"
                 />
               </div>
               {errors.password && (
-                <p className="text-red-500 text-xs mt-1 ml-1 font-medium italic">
+                <p className="mt-2 text-xs font-bold text-rose-600">
                   {errors.password.message}
                 </p>
               )}
@@ -148,40 +170,24 @@ export default function LoginPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-violet-200 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed group mt-2"
+              disabled={isSubmitting}
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
             >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <Loader2 className="animate-spin mr-2" size={20} />
-                  <span>Signing in...</span>
-                </div>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="animate-spin h-5 w-5" />
+                  Signing in...
+                </>
               ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <span>Sign In</span>
-                  <ArrowRight
-                    size={18}
-                    className="group-hover:translate-x-1 transition-transform"
-                  />
-                </div>
+                <>
+                  Sign in
+                  <ArrowRight className="h-4 w-4" />
+                </>
               )}
             </button>
           </form>
-
-          {/* Footer */}
-          <div className="mt-8 text-center pt-6 border-t border-slate-50">
-            <p className="text-slate-500 text-sm font-medium">
-              New here?{" "}
-              <Link
-                href="/register"
-                className="text-violet-600 font-extrabold hover:text-indigo-700 transition-colors"
-              >
-                Create an account
-              </Link>
-            </p>
-          </div>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </main>
   );
 }

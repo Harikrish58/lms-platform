@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isAuthenticated } from "@/lib/auth";
 
 export default function AuthLayout({
   children,
@@ -10,17 +9,28 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const loggedIn = isAuthenticated();
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/me");
 
-    if (loggedIn) {
-      router.replace("/courses");
-    }
+        // Already logged in → redirect away from auth pages
+        if (response.ok) {
+          router.replace("/courses");
+          return;
+        }
 
-    // defer state update slightly (fix warning)
-    setTimeout(() => setIsChecking(false), 0);
+        setIsChecking(false);
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        setIsChecking(false);
+      }
+    };
+
+    checkAuth();
   }, [router]);
 
   if (isChecking) {
