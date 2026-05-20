@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isAuthenticated } from "@/lib/auth";
 
 export default function ProtectedLayout({
   children,
@@ -10,23 +9,32 @@ export default function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const checkAuth = () => {
-      const loggedIn = isAuthenticated();
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/me");
 
-      if (!loggedIn) {
-        router.replace("/login");
-      } else {
+        // User not logged in
+        if (!response.ok) {
+          router.replace("/login");
+          return;
+        }
+
+        // User authenticated
         setIsChecking(false);
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        router.replace("/login");
       }
     };
 
     checkAuth();
   }, [router]);
 
-  // Prevent flicker
+  // Prevent page flicker
   if (isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center">

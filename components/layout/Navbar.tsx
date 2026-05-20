@@ -47,12 +47,19 @@ export default function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Synchronized authenticated session fetching via TanStack Query
-  const { data, isLoading } = useQuery<MeResponse>({
+  const { data, isLoading } = useQuery<MeResponse | null>({
     queryKey: ["me"],
+
     queryFn: async () => {
-      const res = await axiosInstance.get("/api/me");
-      return res.data;
+      const response = await fetch("/api/me");
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return response.json();
     },
+
     retry: false,
     staleTime: 1000 * 60 * 5,
   });
@@ -95,16 +102,12 @@ export default function Navbar() {
     <header className="w-full border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-50 transition-all duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4 md:gap-8">
         {/* Brand Identity - Logo Image */}
-        <Link
-          href="/"
-          className="flex items-center shrink-0 group focus:outline-hidden"
-        >
-          <div className="relative w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 group-active:scale-95 transition-all duration-200">
+        <Link href="/" className="flex items-center shrink-0 group">
+          <div className="relative w-[130px] h-[40px] flex items-center">
             <Image
               src="/navlogo.png"
               alt="Nextera Logo"
-              width={96}
-              height={96}
+              fill
               priority
               className="object-contain"
             />

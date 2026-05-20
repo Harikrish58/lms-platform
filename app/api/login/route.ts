@@ -1,4 +1,8 @@
-import { validateUserCredentials, AUTH_COOKIE_MAX_AGE } from "@/actions/user.actions";
+import {
+  validateUserCredentials,
+  AUTH_COOKIE_MAX_AGE,
+} from "@/actions/user.actions";
+
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -17,6 +21,16 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!result.token) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Token generation failed",
+        },
+        { status: 500 },
+      );
+    }
+
     const response = NextResponse.json(
       {
         success: true,
@@ -27,15 +41,15 @@ export async function POST(req: Request) {
       { status: 200 },
     );
 
-    response.cookies.set({
-      name: "token",
-      value: result.token!,
+    response.cookies.set("token", result.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", // Switched from strict to lax for smooth external link sessions
+      secure: false, // localhost dev
+      sameSite: "lax",
       maxAge: AUTH_COOKIE_MAX_AGE,
       path: "/",
     });
+
+    console.log("COOKIE SET SUCCESSFULLY");
 
     return response;
   } catch (error) {

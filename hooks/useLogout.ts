@@ -1,28 +1,25 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { logout as apiLogout } from "@/lib/auth";
-import toast from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import axiosInstance from "@/lib/axios";
 
 export const useLogout = () => {
-  const queryClient = useQueryClient();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const handleLogout = async (): Promise<void> => {
+  const handleLogout = async () => {
     try {
-      // Clear session cookie on the server
-      await apiLogout();
+      await axiosInstance.post("/api/logout");
 
-      // Clear all cached data in the client state
-      queryClient.clear();
+      // Remove authenticated user cache only
+      queryClient.removeQueries({
+        queryKey: ["me"],
+      });
 
-      toast.success("Logged out successfully");
-
-      // Redirect user back to the login page
       router.push("/login");
       router.refresh();
-    } catch (error: unknown) {
-      console.error("Logout error:", error);
-      toast.error("Failed to sign out.");
+
+    } catch (error) {
+      console.error("Logout failed:", error);
     }
   };
 
