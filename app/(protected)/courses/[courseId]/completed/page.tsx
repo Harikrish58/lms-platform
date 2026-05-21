@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getCourseById } from "@/services/course.service";
@@ -14,6 +14,7 @@ import {
   Download,
   Share2,
 } from "lucide-react";
+import { ReviewModal } from "@/components/courses/ReviewModal";
 
 // Types
 type Course = {
@@ -28,8 +29,9 @@ export default function CourseCompletedPage({
 }) {
   const { courseId } = use(params);
   const router = useRouter();
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
 
-  // Fetch Course details for display
+  // Fetch Course details
   const { data: courseData, isLoading: courseLoading } = useQuery({
     queryKey: ["course", courseId],
     queryFn: () => getCourseById(courseId),
@@ -37,7 +39,7 @@ export default function CourseCompletedPage({
 
   const course: Course | undefined = courseData?.data;
 
-  // Fetch Progress to confirm 100% completion state
+  // Fetch Progress
   const { data: progressData } = useQuery({
     queryKey: ["progress", courseId],
     queryFn: async () => {
@@ -73,7 +75,6 @@ export default function CourseCompletedPage({
           </div>
         </div>
 
-        {/* Celebratory Messaging */}
         <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">
           Congratulations!
         </h1>
@@ -82,7 +83,6 @@ export default function CourseCompletedPage({
           this course.
         </p>
 
-        {/* Course Card Summary */}
         <div className="bg-slate-50 rounded-3xl p-6 mb-10 border border-slate-100 text-left flex items-center gap-5">
           <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-200 shrink-0">
             <Star className="text-amber-400 fill-amber-400" size={24} />
@@ -97,14 +97,12 @@ export default function CourseCompletedPage({
           </div>
         </div>
 
-        {/* Visual Progress Confirmation */}
         {progress && (
           <div className="mb-10 px-4">
             <div className="flex justify-between text-xs font-black uppercase tracking-tighter mb-3 text-slate-400">
               <span>Final Completion Status</span>
               <span className="text-emerald-600">100% Verified</span>
             </div>
-
             <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-1 border border-slate-200">
               <div
                 className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-1000 ease-out shadow-sm"
@@ -114,14 +112,13 @@ export default function CourseCompletedPage({
           </div>
         )}
 
-        {/* Functional Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button
-            onClick={() => router.push(`/courses/${courseId}/learn`)}
-            className="flex items-center justify-center gap-2 px-8 py-4 border-2 border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95"
+            onClick={() => setIsReviewOpen(true)}
+            className="flex items-center justify-center gap-2 px-8 py-4 border-2 border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95"
           >
-            <RotateCcw size={18} />
-            Review Course
+            <Star size={18} />
+            Rate Course
           </button>
 
           <button
@@ -133,20 +130,22 @@ export default function CourseCompletedPage({
           </button>
         </div>
 
-        {/* Secondary Actions */}
         <div className="mt-10 flex items-center justify-center gap-8 border-t border-slate-100 pt-8">
           <button className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors">
-            <Download size={16} />
-            Certificate
+            <Download size={16} /> Certificate
           </button>
           <button className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors">
-            <Share2 size={16} />
-            Share Result
+            <Share2 size={16} /> Share Result
           </button>
         </div>
       </div>
 
-      {/* Decorative background elements */}
+      <ReviewModal
+        courseId={courseId}
+        isOpen={isReviewOpen}
+        onClose={() => setIsReviewOpen(false)}
+      />
+
       <div className="absolute top-[-10%] left-[-5%] w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-60" />
       <div className="absolute bottom-[-10%] right-[-5%] w-96 h-96 bg-emerald-50 rounded-full blur-3xl opacity-60" />
     </div>
