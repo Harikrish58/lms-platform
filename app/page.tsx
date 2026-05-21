@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getCourses } from "@/services/course.service";
+import { getCourses } from "@/actions/course.actions";
 import {
   ArrowRight,
   BookOpen,
