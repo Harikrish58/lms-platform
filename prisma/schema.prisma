@@ -29,7 +29,10 @@ model Course {
   title       String
   description String
   price       Float
+  
   thumbnail   String? // Stored thumbnail location
+  thumbnailPublicId String?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now()) @updatedAt
 

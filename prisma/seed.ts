@@ -25,6 +25,10 @@ async function main() {
       price: 0,
       isPublished: true,
       instructorId: instructor.id,
+
+      thumbnail:
+        "https://res.cloudinary.com/dmupw3asw/image/upload/v1779608890/Thumbnail_ytvbhx.png",
+      thumbnailPublicId: "Thumbnail_ytvbhx",
     },
   });
 
@@ -51,21 +55,33 @@ async function main() {
       {
         title: "Welcome",
         description: "Course overview",
-        videoUrl: "https://example.com/video1",
+        videoUrl:
+          "https://lms-videos-hari-2026.s3.eu-central-1.amazonaws.com/lms_Working/Create_a_cinematic_modern_SaaS.mp4",
+        thumbnailUrl:
+          "https://res.cloudinary.com/dmupw3asw/image/upload/v1779608890/Thumbnail_ytvbhx.png",
+        thumbnailPublicId: "Thumbnail_ytvbhx",
         sectionId: section1.id,
         order: 1,
       },
       {
         title: "Project Structure",
         description: "Understanding folders",
-        videoUrl: "https://example.com/video2",
+        videoUrl:
+          "https://lms-videos-hari-2026.s3.eu-central-1.amazonaws.com/lms_Working/Create_a_cinematic_modern_SaaS.mp4",
+        thumbnailUrl:
+          "https://res.cloudinary.com/dmupw3asw/image/upload/v1779608890/Thumbnail_ytvbhx.png",
+        thumbnailPublicId: "Thumbnail_ytvbhx",
         sectionId: section1.id,
         order: 2,
       },
       {
         title: "Database Setup",
         description: "Prisma + PostgreSQL",
-        videoUrl: "https://example.com/video3",
+        videoUrl:
+          "https://lms-videos-hari-2026.s3.eu-central-1.amazonaws.com/lms_Working/Create_a_cinematic_modern_SaaS.mp4",
+        thumbnailUrl:
+          "https://res.cloudinary.com/dmupw3asw/image/upload/v1779608890/Thumbnail_ytvbhx.png",
+        thumbnailPublicId: "Thumbnail_ytvbhx",
         sectionId: section2.id,
         order: 1,
       },

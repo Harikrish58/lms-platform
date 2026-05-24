@@ -158,3 +158,27 @@ export const validateUserCredentials = async (data: unknown) => {
     };
   }
 };
+
+export const updateUserProfile = async (userId: string, data: { name?: string; avatarUrl?: string }) => {
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: data.name,
+        avatarUrl: data.avatarUrl,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+      },
+    });
+
+    return { success: true, data: user };
+  } catch (error) {
+    console.error("Failed to update user profile:", error);
+    return { success: false, message: "Internal Server Error" };
+  }
+};

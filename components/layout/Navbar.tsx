@@ -48,7 +48,7 @@ export default function Navbar() {
 
   // Synchronized authenticated session fetching via TanStack Query
   const { data, isLoading } = useQuery<MeResponse | null>({
-    queryKey: ["me"],
+    queryKey: ["currentUser"],
 
     queryFn: async () => {
       const response = await fetch("/api/me");

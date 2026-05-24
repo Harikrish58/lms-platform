@@ -10,14 +10,14 @@ export const useLogout = () => {
     try {
       await axiosInstance.post("/api/logout");
 
-      // Remove authenticated user cache only
+      queryClient.setQueryData(["currentUser"], null);
+
       queryClient.removeQueries({
-        queryKey: ["me"],
+        queryKey: ["currentUser"],
       });
 
       router.push("/login");
       router.refresh();
-
     } catch (error) {
       console.error("Logout failed:", error);
     }
