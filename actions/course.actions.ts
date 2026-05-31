@@ -616,4 +616,72 @@ export const toggleCoursePublishStatus = async (
       message: "Internal Server Error",
     };
   }
+}
+
+export const getCourseForInstructor = async (courseId: string, userId: string) => {
+  try {
+    const course = await prisma.course.findUnique({
+      where: {
+        id: courseId,
+        instructorId: userId,
+      },
+      include: {
+        sections: {
+          orderBy: { order: "asc" },
+          include: {
+            lessons: {
+              orderBy: { order: "asc" },
+            },
+          },
+        },
+      },
+    });
+
+    if (!course) {
+      return {
+        success: false,
+        status: 404,
+        message: "Course not found or unauthorized",
+      };
+    }
+
+    return {
+      success: true,
+      status: 200,
+      data: course,
+    };
+  } catch (error: unknown) {
+    console.error("error fetching course for instructor", error);
+    return {
+      success: false,
+      status: 500,
+      message: "Internal Server Error",
+    };
+  }
+};
+
+export const getInstructorCourses = async (userId: string) => {
+  try {
+    const courses = await prisma.course.findMany({
+      where: { instructorId: userId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { enrollments: true } }
+      }
+    });
+
+    const formattedCourses = courses.map((course) => ({
+      id: course.id,
+      title: course.title,
+      price: course.price || 0,
+      isPublished: course.isPublished,
+      enrollmentsCount: course._count.enrollments,
+      createdAt: course.createdAt.toISOString(),
+    }));
+
+    return { success: true, status: 200, data: formattedCourses };
+  } catch (error) {
+    console.error("Failed to fetch instructor courses:", error);
+    return { success: false, status: 500, message: "Internal Server Error" };
+  }
 };
