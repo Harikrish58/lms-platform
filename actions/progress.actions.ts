@@ -2,6 +2,15 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import { canAccessCourse } from "./enrollment.actions";
 
+/**
+ * Progress Actions
+ *
+ * Handles:
+ * - Lesson completion tracking
+ * - Course progress calculation
+ * - Enrollment-based access validation
+ */
+
 type MarkLessonCompleteResponse =
   | {
       success: true;
@@ -59,9 +68,12 @@ export const markLessonComplete = async (
       };
     }
 
-    const courseId = lesson.section.courseId;
+    const hasAccess = await canAccessCourse(
+      userId,
+      role,
+      lesson.section.courseId,
+    );
 
-    const hasAccess = await canAccessCourse(userId, role, courseId);
     if (!hasAccess) {
       return {
         success: false,
@@ -85,6 +97,9 @@ export const markLessonComplete = async (
         lessonId,
         completed: true,
       },
+      select: {
+        completed: true,
+      },
     });
 
     return {
@@ -96,7 +111,11 @@ export const markLessonComplete = async (
       },
     };
   } catch (error: unknown) {
-    console.error("error updating lesson completion status", error);
+    console.error(
+      `Failed to update lesson completion status for user ${userId} and lesson ${lessonId}`,
+      error,
+    );
+
     return {
       success: false,
       status: 500,
@@ -152,6 +171,7 @@ export const getCourseProgress = async (
     }
 
     const hasAccess = await canAccessCourse(userId, role, courseId);
+
     if (!hasAccess) {
       return {
         success: false,
@@ -163,7 +183,7 @@ export const getCourseProgress = async (
     const lessons = await prisma.lesson.findMany({
       where: {
         section: {
-          courseId: courseId,
+          courseId,
         },
       },
       select: {
@@ -203,7 +223,9 @@ export const getCourseProgress = async (
     const completedLessonIds = completedLessons.map(
       (progress) => progress.lessonId,
     );
+
     const completedCount = completedLessonIds.length;
+
     const progressPercentage = Math.round(
       (completedCount / totalLessons) * 100,
     );
@@ -219,7 +241,11 @@ export const getCourseProgress = async (
       },
     };
   } catch (error: unknown) {
-    console.error("failed to calculate course progress", error);
+    console.error(
+      `Failed to calculate course progress for user ${userId} and course ${courseId}`,
+      error,
+    );
+
     return {
       success: false,
       status: 500,

@@ -24,11 +24,7 @@ export async function PATCH(
 
     const body = await request.json();
 
-    const result = await updateReview(
-      reviewId,
-      auth.user.id,
-      body,
-    );
+    const result = await updateReview(reviewId, auth.user.id, body);
 
     if (!result.success) {
       return NextResponse.json(
@@ -81,10 +77,7 @@ export async function DELETE(
       return auth.error;
     }
 
-    const result = await deleteReview(
-      reviewId,
-      auth.user.id,
-    );
+    const result = await deleteReview(reviewId, auth.user.id);
 
     if (!result.success) {
       return NextResponse.json(

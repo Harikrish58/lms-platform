@@ -14,12 +14,18 @@ export async function GET(req: Request) {
     const result = await getInstructorCourses(auth.user.id);
 
     if (!result.success) {
-      return NextResponse.json({ message: result.message }, { status: result.status });
+      return NextResponse.json(
+        { message: result.message },
+        { status: result.status },
+      );
     }
 
     return NextResponse.json({ success: true, data: result.data });
   } catch (error) {
     console.error("Dashboard route handler error:", error);
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

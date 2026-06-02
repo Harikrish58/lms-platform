@@ -31,11 +31,7 @@ export async function GET(
       return auth.error;
     }
 
-    const result = await getLessonById(
-      lessonId,
-      auth.user.id,
-      auth.user.role,
-    );
+    const result = await getLessonById(lessonId, auth.user.id, auth.user.role);
 
     if (!result.success) {
       return NextResponse.json(
@@ -359,11 +355,7 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteLesson(
-      lessonId,
-      auth.user.id,
-      auth.user.role,
-    );
+    const result = await deleteLesson(lessonId, auth.user.id, auth.user.role);
 
     if (!result.success) {
       return NextResponse.json(

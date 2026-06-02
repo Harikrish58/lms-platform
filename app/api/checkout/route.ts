@@ -14,10 +14,7 @@ export async function POST(request: Request) {
 
     const { courseId } = body;
 
-    const result = await createCheckoutSession(
-      courseId,
-      auth.user.id,
-    );
+    const result = await createCheckoutSession(courseId, auth.user.id);
 
     if (!result.success) {
       return NextResponse.json(

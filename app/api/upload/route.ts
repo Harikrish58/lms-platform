@@ -17,7 +17,10 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File;
 
     if (!file) {
-      return NextResponse.json({ message: "No file provided" }, { status: 400 });
+      return NextResponse.json(
+        { message: "No file provided" },
+        { status: 400 },
+      );
     }
 
     const arrayBuffer = await file.arrayBuffer();

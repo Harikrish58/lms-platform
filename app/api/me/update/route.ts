@@ -15,22 +15,25 @@ export async function PATCH(req: Request) {
 
     const updatedUser = await prisma.user.update({
       where: { id: session.id },
-      data: { 
-        name, 
-        avatarUrl 
+      data: {
+        name,
+        avatarUrl,
       },
-      select: { 
-        id: true, 
-        name: true, 
-        email: true, 
-        role: true, 
-        avatarUrl: true 
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
       },
     });
 
     return NextResponse.json({ success: true, data: updatedUser });
   } catch (error) {
     console.error("Profile update error:", error);
-    return NextResponse.json({ message: "Failed to update profile" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to update profile" },
+      { status: 500 },
+    );
   }
 }

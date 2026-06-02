@@ -25,10 +25,7 @@ export async function POST(
       return auth.error;
     }
 
-    const result = await enrollInCourse(
-      auth.user.id,
-      courseId,
-    );
+    const result = await enrollInCourse(auth.user.id, courseId);
 
     if (!result.success) {
       return NextResponse.json(

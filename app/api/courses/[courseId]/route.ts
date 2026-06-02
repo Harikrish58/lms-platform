@@ -166,11 +166,7 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteCourse(
-      courseId,
-      auth.user.id,
-      auth.user.role,
-    );
+    const result = await deleteCourse(courseId, auth.user.id, auth.user.role);
 
     if (!result.success) {
       return NextResponse.json(

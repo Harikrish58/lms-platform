@@ -1,7 +1,19 @@
+import { canAccessCourse } from "@/actions/enrollment.actions";
 import { prisma } from "@/lib/prisma";
 import { ReviewSchema, UpdateReviewSchema } from "@/schemas/review.schema";
 import { Prisma, Role } from "@prisma/client";
-import { canAccessCourse } from "@/actions/enrollment.actions";
+
+/**
+ * Review Actions
+ *
+ * Handles:
+ * - Review creation
+ * - Review retrieval
+ * - Review summary calculation
+ * - Review updates
+ * - Review deletion
+ * - Course rating synchronization
+ */
 
 type CreateReviewResponse =
   | {
@@ -28,11 +40,12 @@ export const createReview = async (
 ): Promise<CreateReviewResponse> => {
   try {
     const parsed = ReviewSchema.safeParse(body);
+
     if (!parsed.success) {
       return {
         success: false,
         status: 400,
-        message: parsed.error.issues[0].message || "Invalid review data",
+        message: parsed.error.issues[0]?.message || "Invalid review data",
       };
     }
 
@@ -40,7 +53,9 @@ export const createReview = async (
 
     const course = await prisma.course.findUnique({
       where: { id: courseId },
-      select: { id: true },
+      select: {
+        id: true,
+      },
     });
 
     if (!course) {
@@ -52,6 +67,7 @@ export const createReview = async (
     }
 
     const hasAccess = await canAccessCourse(userId, role, courseId);
+
     if (!hasAccess) {
       return {
         success: false,
@@ -67,6 +83,9 @@ export const createReview = async (
           courseId,
         },
       },
+      select: {
+        id: true,
+      },
     });
 
     if (existingReview) {
@@ -78,18 +97,31 @@ export const createReview = async (
     }
 
     const createdReview = await prisma.$transaction(async (tx) => {
-      const newReview = await tx.review.create({
-        data: { rating, comment, userId, courseId },
+      const review = await tx.review.create({
+        data: {
+          rating,
+          comment,
+          userId,
+          courseId,
+        },
       });
 
       const stats = await tx.review.aggregate({
-        where: { courseId },
-        _avg: { rating: true },
-        _count: { rating: true },
+        where: {
+          courseId,
+        },
+        _avg: {
+          rating: true,
+        },
+        _count: {
+          rating: true,
+        },
       });
 
       await tx.course.update({
-        where: { id: courseId },
+        where: {
+          id: courseId,
+        },
         data: {
           averageRating: stats._avg.rating
             ? Number(stats._avg.rating.toFixed(1))
@@ -97,7 +129,8 @@ export const createReview = async (
           totalReviews: stats._count.rating,
         },
       });
-      return newReview;
+
+      return review;
     });
 
     return {
@@ -111,7 +144,11 @@ export const createReview = async (
       },
     };
   } catch (error: unknown) {
-    console.error("failed to create review", error);
+    console.error(
+      `Failed to create review for user ${userId} and course ${courseId}`,
+      error,
+    );
+
     return {
       success: false,
       status: 500,
@@ -169,10 +206,14 @@ export const getCourseReviews = async (
         message: "Course ID is required",
       };
     }
+
     const course = await prisma.course.findUnique({
       where: { id: courseId },
-      select: { id: true },
+      select: {
+        id: true,
+      },
     });
+
     if (!course) {
       return {
         success: false,
@@ -186,7 +227,7 @@ export const getCourseReviews = async (
 
     const sort: SortOption =
       query.sort === "highest" || query.sort === "lowest"
-        ? (query.sort as SortOption)
+        ? query.sort
         : "latest";
 
     const skip = (page - 1) * limit;
@@ -195,20 +236,30 @@ export const getCourseReviews = async (
 
     switch (sort) {
       case "highest":
-        orderBy = { rating: "desc" };
+        orderBy = {
+          rating: "desc",
+        };
         break;
+
       case "lowest":
-        orderBy = { rating: "asc" };
+        orderBy = {
+          rating: "asc",
+        };
         break;
+
       case "latest":
       default:
-        orderBy = { createdAt: "desc" };
+        orderBy = {
+          createdAt: "desc",
+        };
         break;
     }
 
     const [reviews, total] = await Promise.all([
       prisma.review.findMany({
-        where: { courseId },
+        where: {
+          courseId,
+        },
         skip,
         take: limit,
         orderBy,
@@ -226,27 +277,29 @@ export const getCourseReviews = async (
           },
         },
       }),
-      prisma.review.count({ where: { courseId } }),
+      prisma.review.count({
+        where: {
+          courseId,
+        },
+      }),
     ]);
-
-    const formattedReviews = reviews.map((review) => ({
-      id: review.id,
-      rating: review.rating,
-      comment: review.comment,
-      createdAt: review.createdAt,
-      user: {
-        id: review.user.id,
-        name: review.user.name,
-        avatarUrl: review.user.avatarUrl,
-      },
-    }));
 
     return {
       success: true,
       status: 200,
       message: "Reviews fetched successfully",
       data: {
-        reviews: formattedReviews,
+        reviews: reviews.map((review) => ({
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+          user: {
+            id: review.user.id,
+            name: review.user.name,
+            avatarUrl: review.user.avatarUrl,
+          },
+        })),
         pagination: {
           total,
           page,
@@ -256,7 +309,8 @@ export const getCourseReviews = async (
       },
     };
   } catch (error: unknown) {
-    console.error("error fetching course reviews", error);
+    console.error(`Failed to fetch reviews for course ${courseId}`, error);
+
     return {
       success: false,
       status: 500,
@@ -287,8 +341,12 @@ export const getReviewSummary = async (
 ): Promise<GetreviewSummaryResponse> => {
   try {
     const courseExists = await prisma.course.findUnique({
-      where: { id: courseId },
-      select: { id: true },
+      where: {
+        id: courseId,
+      },
+      select: {
+        id: true,
+      },
     });
 
     if (!courseExists) {
@@ -301,14 +359,24 @@ export const getReviewSummary = async (
 
     const [stats, distribution] = await Promise.all([
       prisma.review.aggregate({
-        where: { courseId },
-        _avg: { rating: true },
-        _count: { rating: true },
+        where: {
+          courseId,
+        },
+        _avg: {
+          rating: true,
+        },
+        _count: {
+          rating: true,
+        },
       }),
       prisma.review.groupBy({
-        where: { courseId },
+        where: {
+          courseId,
+        },
         by: ["rating"],
-        _count: { rating: true },
+        _count: {
+          rating: true,
+        },
       }),
     ]);
 
@@ -337,7 +405,11 @@ export const getReviewSummary = async (
       },
     };
   } catch (error: unknown) {
-    console.error("failed to get review summary", error);
+    console.error(
+      `Failed to fetch review summary for course ${courseId}`,
+      error,
+    );
+
     return {
       success: false,
       status: 500,
@@ -372,11 +444,12 @@ export const updateReview = async (
 ): Promise<UpdateReviewResponse> => {
   try {
     const parsed = UpdateReviewSchema.safeParse(body);
+
     if (!parsed.success) {
       return {
         success: false,
         status: 400,
-        message: parsed.error.issues[0].message || "Invalid review data",
+        message: parsed.error.issues[0]?.message || "Invalid review data",
         errors: parsed.error.issues.map((issue) => ({
           field: issue.path.join("."),
           message: issue.message,
@@ -387,7 +460,16 @@ export const updateReview = async (
     const { rating, comment } = parsed.data;
 
     const existingReview = await prisma.review.findUnique({
-      where: { id: reviewId },
+      where: {
+        id: reviewId,
+      },
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        userId: true,
+        courseId: true,
+      },
     });
 
     if (!existingReview) {
@@ -419,7 +501,9 @@ export const updateReview = async (
 
     const updatedReview = await prisma.$transaction(async (tx) => {
       const review = await tx.review.update({
-        where: { id: reviewId },
+        where: {
+          id: reviewId,
+        },
         data: {
           rating: rating ?? existingReview.rating,
           comment: comment ?? existingReview.comment,
@@ -427,13 +511,21 @@ export const updateReview = async (
       });
 
       const stats = await tx.review.aggregate({
-        where: { courseId: existingReview.courseId },
-        _avg: { rating: true },
-        _count: { rating: true },
+        where: {
+          courseId: existingReview.courseId,
+        },
+        _avg: {
+          rating: true,
+        },
+        _count: {
+          rating: true,
+        },
       });
 
       await tx.course.update({
-        where: { id: existingReview.courseId },
+        where: {
+          id: existingReview.courseId,
+        },
         data: {
           averageRating: stats._avg.rating
             ? Number(stats._avg.rating.toFixed(1))
@@ -441,6 +533,7 @@ export const updateReview = async (
           totalReviews: stats._count.rating,
         },
       });
+
       return review;
     });
 
@@ -456,7 +549,11 @@ export const updateReview = async (
       },
     };
   } catch (error: unknown) {
-    console.error("error while updating review", error);
+    console.error(
+      `Failed to update review ${reviewId} for user ${userId}`,
+      error,
+    );
+
     return {
       success: false,
       status: 500,
@@ -483,8 +580,16 @@ export const deleteReview = async (
 ): Promise<DeleteReviewResponse> => {
   try {
     const existingReview = await prisma.review.findUnique({
-      where: { id: reviewId },
+      where: {
+        id: reviewId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        courseId: true,
+      },
     });
+
     if (!existingReview) {
       return {
         success: false,
@@ -503,17 +608,27 @@ export const deleteReview = async (
 
     await prisma.$transaction(async (tx) => {
       await tx.review.delete({
-        where: { id: reviewId },
+        where: {
+          id: reviewId,
+        },
       });
 
       const stats = await tx.review.aggregate({
-        where: { courseId: existingReview.courseId },
-        _avg: { rating: true },
-        _count: { rating: true },
+        where: {
+          courseId: existingReview.courseId,
+        },
+        _avg: {
+          rating: true,
+        },
+        _count: {
+          rating: true,
+        },
       });
 
       await tx.course.update({
-        where: { id: existingReview.courseId },
+        where: {
+          id: existingReview.courseId,
+        },
         data: {
           averageRating: stats._avg.rating
             ? Number(stats._avg.rating.toFixed(1))
@@ -529,7 +644,11 @@ export const deleteReview = async (
       message: "Review deleted successfully",
     };
   } catch (error: unknown) {
-    console.error("failed to delete review from course", error);
+    console.error(
+      `Failed to delete review ${reviewId} for user ${userId}`,
+      error,
+    );
+
     return {
       success: false,
       status: 500,
