@@ -1,17 +1,28 @@
-import { prisma } from "@/lib/prisma";
-import { registerSchema, loginSchema } from "@/schemas/user.schema";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+import { prisma } from "@/lib/prisma";
+import { loginSchema, registerSchema } from "@/schemas/user.schema";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export const AUTH_COOKIE_MAX_AGE = process.env.JWT_EXPIRES_IN
-  ? parseInt(process.env.JWT_EXPIRES_IN, 10)
+  ? Number.parseInt(process.env.JWT_EXPIRES_IN, 10)
   : 60 * 60 * 24 * 7;
 
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined");
 }
+
+/**
+ * User Authentication & Profile Actions
+ *
+ * Handles:
+ * - User registration
+ * - User authentication
+ * - JWT generation
+ * - User profile updates
+ */
 
 export const registerUser = async (data: unknown) => {
   try {
@@ -21,7 +32,7 @@ export const registerUser = async (data: unknown) => {
       return {
         success: false,
         status: 400,
-        message: parsed.error.issues[0].message || "Invalid input data",
+        message: parsed.error.issues[0]?.message || "Invalid input data",
       };
     }
 
@@ -29,6 +40,9 @@ export const registerUser = async (data: unknown) => {
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
+      select: {
+        id: true,
+      },
     });
 
     if (existingUser) {
@@ -48,6 +62,13 @@ export const registerUser = async (data: unknown) => {
         password: hashedPassword,
         role: "STUDENT",
       },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        avatarUrl: true,
+      },
     });
 
     const token = jwt.sign(
@@ -66,16 +87,10 @@ export const registerUser = async (data: unknown) => {
       success: true,
       status: 201,
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatarUrl: user.avatarUrl,
-      },
+      user,
     };
   } catch (error: unknown) {
-    console.error("failed to register new user", error);
+    console.error("Failed to register new user", error);
 
     return {
       success: false,
@@ -103,7 +118,7 @@ export const validateUserCredentials = async (data: unknown) => {
       where: { email },
     });
 
-    if (!user || !user.password) {
+    if (!user?.password) {
       return {
         success: false,
         status: 401,
@@ -148,8 +163,8 @@ export const validateUserCredentials = async (data: unknown) => {
         avatarUrl: user.avatarUrl,
       },
     };
-  } catch (error) {
-    console.error("Error validating user credentials:", error);
+  } catch (error: unknown) {
+    console.error("Failed to validate user credentials", error);
 
     return {
       success: false,
@@ -159,7 +174,13 @@ export const validateUserCredentials = async (data: unknown) => {
   }
 };
 
-export const updateUserProfile = async (userId: string, data: { name?: string; avatarUrl?: string }) => {
+export const updateUserProfile = async (
+  userId: string,
+  data: {
+    name?: string;
+    avatarUrl?: string;
+  },
+) => {
   try {
     const user = await prisma.user.update({
       where: { id: userId },
@@ -176,9 +197,19 @@ export const updateUserProfile = async (userId: string, data: { name?: string; a
       },
     });
 
-    return { success: true, data: user };
-  } catch (error) {
-    console.error("Failed to update user profile:", error);
-    return { success: false, message: "Internal Server Error" };
+    return {
+      success: true,
+      data: user,
+    };
+  } catch (error: unknown) {
+    console.error(
+      `Failed to update profile for user ${userId}`,
+      error,
+    );
+
+    return {
+      success: false,
+      message: "Internal Server Error",
+    };
   }
 };

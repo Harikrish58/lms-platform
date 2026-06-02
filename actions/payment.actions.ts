@@ -1,6 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 
+/**
+ * Creates a Stripe checkout session for a course purchase.
+ *
+ * Handles:
+ * - Course availability validation
+ * - Duplicate enrollment prevention
+ * - Free course enrollment
+ * - Pending payment prevention
+ * - Stripe checkout session creation
+ * - Payment record creation
+ */
 export const createCheckoutSession = async (
   courseId: string,
   userId: string,
@@ -8,6 +19,12 @@ export const createCheckoutSession = async (
   try {
     const course = await prisma.course.findUnique({
       where: { id: courseId },
+      select: {
+        id: true,
+        title: true,
+        price: true,
+        isPublished: true,
+      },
     });
 
     if (!course || !course.isPublished) {
@@ -24,6 +41,9 @@ export const createCheckoutSession = async (
           userId,
           courseId,
         },
+      },
+      select: {
+        userId: true,
       },
     });
 
@@ -57,6 +77,9 @@ export const createCheckoutSession = async (
         courseId,
         status: "PENDING",
       },
+      select: {
+        id: true,
+      },
     });
 
     if (existingPayment) {
@@ -66,6 +89,8 @@ export const createCheckoutSession = async (
         status: 400,
       };
     }
+
+    const amountInCents = Math.round(course.price * 100);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -77,7 +102,7 @@ export const createCheckoutSession = async (
             product_data: {
               name: course.title,
             },
-            unit_amount: Math.round(course.price * 100),
+            unit_amount: amountInCents,
           },
           quantity: 1,
         },
@@ -103,7 +128,7 @@ export const createCheckoutSession = async (
         userId,
         courseId,
         stripeSessionId: session.id,
-        amount: Math.round(course.price * 100),
+        amount: amountInCents,
         currency: "pln",
         status: "PENDING",
       },
@@ -116,7 +141,10 @@ export const createCheckoutSession = async (
       },
     };
   } catch (error: unknown) {
-    console.error("Error creating checkout session:", error);
+    console.error(
+      `Failed to create checkout session for user ${userId} and course ${courseId}`,
+      error,
+    );
 
     return {
       success: false,

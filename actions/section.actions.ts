@@ -6,6 +6,17 @@ import {
 } from "@/schemas/section.Schema";
 import { Role } from "@prisma/client";
 
+/**
+ * Section Actions
+ *
+ * Handles:
+ * - Section creation
+ * - Section retrieval
+ * - Section updates
+ * - Section deletion
+ * - Section reordering
+ */
+
 type CreateSectionResponse =
   | {
       success: true;
@@ -24,6 +35,10 @@ type CreateSectionResponse =
       errors?: unknown;
     };
 
+/**
+ * Creates a new section within a course and assigns
+ * the next available display order.
+ */
 export const createSection = async (
   courseId: string,
   userId: string,
@@ -45,7 +60,7 @@ export const createSection = async (
       return {
         success: false,
         status: 400,
-        message: parsed.error.issues[0].message,
+        message: parsed.error.issues[0]?.message,
         errors: parsed.error.flatten().fieldErrors,
       };
     }
@@ -54,7 +69,9 @@ export const createSection = async (
 
     const course = await prisma.course.findUnique({
       where: { id: courseId },
-      select: { instructorId: true },
+      select: {
+        instructorId: true,
+      },
     });
 
     if (!course) {
@@ -76,8 +93,12 @@ export const createSection = async (
 
     const lastSection = await prisma.section.findFirst({
       where: { courseId },
-      orderBy: { order: "desc" },
-      select: { order: true },
+      orderBy: {
+        order: "desc",
+      },
+      select: {
+        order: true,
+      },
     });
 
     const newOrder = lastSection ? lastSection.order + 1 : 1;
@@ -101,7 +122,8 @@ export const createSection = async (
       },
     };
   } catch (error: unknown) {
-    console.error("Error creating section:", error);
+    console.error(`Failed to create section for course ${courseId}`, error);
+
     return {
       success: false,
       status: 500,
@@ -128,6 +150,10 @@ type GetSectionsByCourseResponse =
       message: string;
     };
 
+/**
+ * Retrieves all sections for a course along with
+ * the total number of lessons in each section.
+ */
 export const getSectionsByCourse = async (
   courseId: string,
 ): Promise<GetSectionsByCourseResponse> => {
@@ -139,10 +165,16 @@ export const getSectionsByCourse = async (
         message: "Course ID is required.",
       };
     }
+
     const course = await prisma.course.findUnique({
-      where: { id: courseId },
-      select: { id: true },
+      where: {
+        id: courseId,
+      },
+      select: {
+        id: true,
+      },
     });
+
     if (!course) {
       return {
         success: false,
@@ -150,10 +182,19 @@ export const getSectionsByCourse = async (
         message: "Course not found.",
       };
     }
+
     const sections = await prisma.section.findMany({
-      where: { courseId },
-      orderBy: { order: "asc" },
-      include: {
+      where: {
+        courseId,
+      },
+      orderBy: {
+        order: "asc",
+      },
+      select: {
+        id: true,
+        title: true,
+        order: true,
+        courseId: true,
         _count: {
           select: {
             lessons: true,
@@ -162,20 +203,20 @@ export const getSectionsByCourse = async (
       },
     });
 
-    const formattedSections = sections.map((section) => ({
-      id: section.id,
-      title: section.title,
-      order: section.order,
-      courseId: section.courseId,
-      totalLessons: section._count.lessons,
-    }));
     return {
       success: true,
       status: 200,
-      data: formattedSections,
+      data: sections.map((section) => ({
+        id: section.id,
+        title: section.title,
+        order: section.order,
+        courseId: section.courseId,
+        totalLessons: section._count.lessons,
+      })),
     };
   } catch (error: unknown) {
-    console.error("Error fetching sections:", error);
+    console.error(`Failed to fetch sections for course ${courseId}`, error);
+
     return {
       success: false,
       status: 500,
@@ -203,6 +244,10 @@ type UpdateSectionResponse =
       errors?: unknown;
     };
 
+/**
+ * Updates the title of an existing section.
+ * Only the course owner or an admin can perform this action.
+ */
 export const updateSection = async (
   sectionId: string,
   userId: string,
@@ -217,21 +262,29 @@ export const updateSection = async (
         message: "Section ID is required.",
       };
     }
+
     const parsed = UpdateSectionSchema.safeParse(body);
 
     if (!parsed.success) {
       return {
         success: false,
         status: 400,
-        message: parsed.error.issues[0].message,
+        message: parsed.error.issues[0]?.message,
         errors: parsed.error.flatten().fieldErrors,
       };
     }
 
     const { title } = parsed.data;
+
     const section = await prisma.section.findUnique({
-      where: { id: sectionId },
-      include: {
+      where: {
+        id: sectionId,
+      },
+      select: {
+        id: true,
+        title: true,
+        order: true,
+        courseId: true,
         course: {
           select: {
             instructorId: true,
@@ -255,6 +308,7 @@ export const updateSection = async (
         message: "You are not the owner of this section.",
       };
     }
+
     if (section.title === title) {
       return {
         success: false,
@@ -262,10 +316,16 @@ export const updateSection = async (
         message: "No changes detected in the title.",
       };
     }
+
     const updatedSection = await prisma.section.update({
-      where: { id: sectionId },
-      data: { title },
+      where: {
+        id: sectionId,
+      },
+      data: {
+        title,
+      },
     });
+
     return {
       success: true,
       status: 200,
@@ -278,7 +338,8 @@ export const updateSection = async (
       },
     };
   } catch (error: unknown) {
-    console.error("Error updating section:", error);
+    console.error(`Failed to update section ${sectionId}`, error);
+
     return {
       success: false,
       status: 500,
@@ -299,6 +360,10 @@ type DeleteSectionResponse =
       message: string;
     };
 
+/**
+ * Deletes a section from a course.
+ * Only the course owner or an admin can perform this action.
+ */
 export const deleteSection = async (
   sectionId: string,
   userId: string,
@@ -312,9 +377,13 @@ export const deleteSection = async (
         message: "Section ID is required.",
       };
     }
+
     const section = await prisma.section.findUnique({
-      where: { id: sectionId },
-      include: {
+      where: {
+        id: sectionId,
+      },
+      select: {
+        id: true,
         course: {
           select: {
             instructorId: true,
@@ -340,15 +409,19 @@ export const deleteSection = async (
     }
 
     await prisma.section.delete({
-      where: { id: sectionId },
+      where: {
+        id: sectionId,
+      },
     });
+
     return {
       success: true,
       status: 200,
       message: "Section deleted successfully.",
     };
   } catch (error: unknown) {
-    console.error("Error deleting section:", error);
+    console.error(`Failed to delete section ${sectionId}`, error);
+
     return {
       success: false,
       status: 500,
@@ -370,6 +443,11 @@ type ReOrderSectionsResponse =
       errors?: unknown;
     };
 
+/**
+ * Reorders sections within a course.
+ * Validates ownership and ensures all provided section IDs
+ * belong to the target course before updating positions.
+ */
 export const reOrderSections = async (
   courseId: string,
   userId: string,
@@ -391,7 +469,7 @@ export const reOrderSections = async (
       return {
         success: false,
         status: 400,
-        message: parsed.error.issues[0].message,
+        message: parsed.error.issues[0]?.message,
         errors: parsed.error.flatten().fieldErrors,
       };
     }
@@ -399,7 +477,9 @@ export const reOrderSections = async (
     const { sectionIds } = parsed.data;
 
     const course = await prisma.course.findUnique({
-      where: { id: courseId },
+      where: {
+        id: courseId,
+      },
       select: {
         instructorId: true,
       },
@@ -422,9 +502,15 @@ export const reOrderSections = async (
     }
 
     const existingSections = await prisma.section.findMany({
-      where: { courseId },
-      orderBy: { order: "asc" },
-      select: { id: true },
+      where: {
+        courseId,
+      },
+      orderBy: {
+        order: "asc",
+      },
+      select: {
+        id: true,
+      },
     });
 
     const existingIds = new Set(existingSections.map((section) => section.id));
@@ -442,8 +528,12 @@ export const reOrderSections = async (
     await prisma.$transaction(
       sectionIds.map((id, index) =>
         prisma.section.update({
-          where: { id },
-          data: { order: index + 1 },
+          where: {
+            id,
+          },
+          data: {
+            order: index + 1,
+          },
         }),
       ),
     );
@@ -454,7 +544,8 @@ export const reOrderSections = async (
       message: "Sections reordered successfully.",
     };
   } catch (error: unknown) {
-    console.error("failed to reorder sections", error);
+    console.error(`Failed to reorder sections for course ${courseId}`, error);
+
     return {
       success: false,
       status: 500,

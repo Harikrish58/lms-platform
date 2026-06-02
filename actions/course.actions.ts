@@ -1,9 +1,13 @@
 import { Prisma } from "@/generated/prisma/browser";
 import { prisma } from "@/lib/prisma";
 import { courseSchema } from "@/schemas/course.schema";
-import { Course, Role } from "@prisma/client";
+import { Role } from "@prisma/client";
 import { ZodError } from "zod";
 
+/**
+ * Creates a new course for an instructor.
+ * Validates incoming payload using Zod before persisting.
+ */
 export const createCourse = async (data: unknown, userId: string) => {
   try {
     const validatedData = courseSchema.parse(data);
@@ -28,6 +32,7 @@ export const createCourse = async (data: unknown, userId: string) => {
         "validation error while creating course",
         error.flatten().fieldErrors,
       );
+
       return {
         success: false,
         status: 400,
@@ -37,6 +42,7 @@ export const createCourse = async (data: unknown, userId: string) => {
     }
 
     console.error("failed to create course", error);
+
     return {
       success: false,
       status: 500,
@@ -45,6 +51,18 @@ export const createCourse = async (data: unknown, userId: string) => {
   }
 };
 
+type GetCoursesParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+};
+
+/**
+ * Returns published courses with filtering and pagination.
+ */
 export const getCourses = async ({
   page = 1,
   limit = 10,
@@ -52,14 +70,7 @@ export const getCourses = async ({
   minPrice,
   maxPrice,
   minRating,
-}: {
-  page?: number;
-  limit?: number;
-  search?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  minRating?: number;
-}) => {
+}: GetCoursesParams) => {
   try {
     const skip = (page - 1) * limit;
 
@@ -76,8 +87,14 @@ export const getCourses = async ({
 
     if (minPrice !== undefined || maxPrice !== undefined) {
       where.price = {};
-      if (minPrice !== undefined) where.price.gte = minPrice;
-      if (maxPrice !== undefined) where.price.lte = maxPrice;
+
+      if (minPrice !== undefined) {
+        where.price.gte = minPrice;
+      }
+
+      if (maxPrice !== undefined) {
+        where.price.lte = maxPrice;
+      }
     }
 
     if (minRating !== undefined) {
@@ -91,7 +108,9 @@ export const getCourses = async ({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: {
+          createdAt: "desc",
+        },
         include: {
           instructor: {
             select: {
@@ -144,6 +163,7 @@ export const getCourses = async ({
     };
   } catch (error: unknown) {
     console.error("error fetching courses list", error);
+
     return {
       success: false,
       status: 500,
@@ -193,6 +213,9 @@ type GetCourseByIdResponse =
       message: string;
     };
 
+/**
+ * Returns a published course with its sections and lessons.
+ */
 export const getCourseById = async (
   id: string,
 ): Promise<GetCourseByIdResponse> => {
@@ -204,6 +227,7 @@ export const getCourseById = async (
         message: "Course ID is required",
       };
     }
+
     const course = await prisma.course.findUnique({
       where: { id },
       include: {
@@ -220,10 +244,14 @@ export const getCourseById = async (
           },
         },
         sections: {
-          orderBy: { order: "asc" },
+          orderBy: {
+            order: "asc",
+          },
           include: {
             lessons: {
-              orderBy: { order: "asc" },
+              orderBy: {
+                order: "asc",
+              },
               select: {
                 id: true,
                 title: true,
@@ -233,6 +261,7 @@ export const getCourseById = async (
         },
       },
     });
+
     if (!course || !course.isPublished) {
       return {
         success: false,
@@ -240,6 +269,7 @@ export const getCourseById = async (
         message: "Course not found",
       };
     }
+
     return {
       success: true,
       status: 200,
@@ -247,6 +277,7 @@ export const getCourseById = async (
     };
   } catch (error: unknown) {
     console.error("could not get course by id", error);
+
     return {
       success: false,
       status: 500,
@@ -255,6 +286,10 @@ export const getCourseById = async (
   }
 };
 
+/**
+ * Updates an existing course after validating ownership.
+ * Admins can update any course.
+ */
 export const updateCourse = async (
   id: string,
   data: unknown,
@@ -300,6 +335,7 @@ export const updateCourse = async (
         "validation failed during course update",
         error.flatten().fieldErrors,
       );
+
       return {
         success: false,
         status: 400,
@@ -309,6 +345,7 @@ export const updateCourse = async (
     }
 
     console.error("error updating course data", error);
+
     return {
       success: false,
       status: 500,
@@ -317,6 +354,10 @@ export const updateCourse = async (
   }
 };
 
+/**
+ * Deletes a course and all dependent records inside a transaction.
+ * Admins can delete any course.
+ */
 export const deleteCourse = async (
   id: string,
   userId: string,
@@ -326,6 +367,7 @@ export const deleteCourse = async (
     const course = await prisma.course.findUnique({
       where: { id },
     });
+
     if (!course) {
       return {
         success: false,
@@ -351,38 +393,60 @@ export const deleteCourse = async (
       const sectionIds = sections.map((section) => section.id);
 
       const lessons = await tx.lesson.findMany({
-        where: { sectionId: { in: sectionIds } },
-        select: { id: true },
+        where: {
+          sectionId: {
+            in: sectionIds,
+          },
+        },
+        select: {
+          id: true,
+        },
       });
 
       const lessonIds = lessons.map((lesson) => lesson.id);
 
       if (lessonIds.length > 0) {
         await tx.progress.deleteMany({
-          where: { lessonId: { in: lessonIds } },
+          where: {
+            lessonId: {
+              in: lessonIds,
+            },
+          },
         });
       }
 
       if (sectionIds.length > 0) {
         await tx.lesson.deleteMany({
-          where: { sectionId: { in: sectionIds } },
+          where: {
+            sectionId: {
+              in: sectionIds,
+            },
+          },
         });
       }
 
       await tx.section.deleteMany({
-        where: { courseId: id },
+        where: {
+          courseId: id,
+        },
       });
 
       await tx.enrollment.deleteMany({
-        where: { courseId: id },
+        where: {
+          courseId: id,
+        },
       });
 
       await tx.review.deleteMany({
-        where: { courseId: id },
+        where: {
+          courseId: id,
+        },
       });
 
       await tx.course.delete({
-        where: { id },
+        where: {
+          id,
+        },
       });
     });
 
@@ -393,6 +457,7 @@ export const deleteCourse = async (
     };
   } catch (error: unknown) {
     console.error("error during course deletion transaction", error);
+
     return {
       success: false,
       status: 500,
@@ -420,6 +485,9 @@ type GetMyCoursesResponse =
       message: string;
     };
 
+/**
+ * Returns all enrolled courses along with lesson progress.
+ */
 export const getMyCourses = async (
   userId: string,
 ): Promise<GetMyCoursesResponse> => {
@@ -431,8 +499,11 @@ export const getMyCourses = async (
         message: "User ID is required",
       };
     }
+
     const enrollments = await prisma.enrollment.findMany({
-      where: { userId },
+      where: {
+        userId,
+      },
       select: {
         course: {
           select: {
@@ -452,6 +523,7 @@ export const getMyCourses = async (
         },
       },
     });
+
     if (!enrollments.length) {
       return {
         success: true,
@@ -469,22 +541,27 @@ export const getMyCourses = async (
         ),
       ),
     ];
+
     const progressRecords = await prisma.progress.findMany({
       where: {
         userId,
-        lessonId: { in: allLessonIds },
+        lessonId: {
+          in: allLessonIds,
+        },
         completed: true,
       },
       select: {
         lessonId: true,
       },
     });
+
     const completedLessonIds = new Set(
       progressRecords.map((record) => record.lessonId),
     );
 
     const coursesData = enrollments.map((enrollment) => {
       const course = enrollment.course;
+
       const totalLessons = course.sections.reduce(
         (sum, section) => sum + section.lessons.length,
         0,
@@ -500,10 +577,12 @@ export const getMyCourses = async (
           ),
         0,
       );
+
       const progressPercentage =
         totalLessons > 0
           ? Math.round((completedLessons / totalLessons) * 100)
           : 0;
+
       return {
         courseId: course.id,
         title: course.title,
@@ -513,6 +592,7 @@ export const getMyCourses = async (
         progressPercentage,
       };
     });
+
     return {
       success: true,
       status: 200,
@@ -520,6 +600,7 @@ export const getMyCourses = async (
     };
   } catch (error: unknown) {
     console.error("failed to fetch user courses and progress", error);
+
     return {
       success: false,
       status: 500,
@@ -528,6 +609,10 @@ export const getMyCourses = async (
   }
 };
 
+/**
+ * Toggles the publish status of a course.
+ * Prevents publishing courses that do not contain content.
+ */
 export const toggleCoursePublishStatus = async (
   id: string,
   userId: string,
@@ -546,7 +631,9 @@ export const toggleCoursePublishStatus = async (
           select: {
             id: true,
             lessons: {
-              select: { id: true },
+              select: {
+                id: true,
+              },
             },
           },
         },
@@ -571,7 +658,9 @@ export const toggleCoursePublishStatus = async (
 
     if (!course.isPublished) {
       const hasSections = course.sections.length > 0;
-      const hasLessons = course.sections.some((s) => s.lessons.length > 0);
+      const hasLessons = course.sections.some(
+        (section) => section.lessons.length > 0,
+      );
 
       if (!hasSections || !hasLessons) {
         return {
@@ -593,13 +682,17 @@ export const toggleCoursePublishStatus = async (
 
     const updatedCourse = await prisma.course.update({
       where: { id },
-      data: { isPublished: !course.isPublished },
+      data: {
+        isPublished: !course.isPublished,
+      },
     });
 
     return {
       success: true,
       status: 200,
-      message: `course ${updatedCourse.isPublished ? "published" : "unpublished"} successfully`,
+      message: `course ${
+        updatedCourse.isPublished ? "published" : "unpublished"
+      } successfully`,
       data: {
         id: updatedCourse.id,
         isPublished: updatedCourse.isPublished,
@@ -610,27 +703,38 @@ export const toggleCoursePublishStatus = async (
       error,
       courseId: id,
     });
+
     return {
       success: false,
       status: 500,
       message: "Internal Server Error",
     };
   }
-}
+};
 
-export const getCourseForInstructor = async (courseId: string, userId: string) => {
+/**
+ * Returns a course with its curriculum for the owning instructor.
+ */
+export const getCourseForInstructor = async (
+  courseId: string,
+  userId: string,
+) => {
   try {
-    const course = await prisma.course.findUnique({
+    const course = await prisma.course.findFirst({
       where: {
         id: courseId,
         instructorId: userId,
       },
       include: {
         sections: {
-          orderBy: { order: "asc" },
+          orderBy: {
+            order: "asc",
+          },
           include: {
             lessons: {
-              orderBy: { order: "asc" },
+              orderBy: {
+                order: "asc",
+              },
             },
           },
         },
@@ -652,6 +756,7 @@ export const getCourseForInstructor = async (courseId: string, userId: string) =
     };
   } catch (error: unknown) {
     console.error("error fetching course for instructor", error);
+
     return {
       success: false,
       status: 500,
@@ -660,28 +765,48 @@ export const getCourseForInstructor = async (courseId: string, userId: string) =
   }
 };
 
+/**
+ * Returns all courses created by the instructor.
+ */
 export const getInstructorCourses = async (userId: string) => {
   try {
     const courses = await prisma.course.findMany({
-      where: { instructorId: userId },
-      orderBy: { createdAt: "desc" },
+      where: {
+        instructorId: userId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
       include: {
-        _count: { select: { enrollments: true } }
-      }
+        _count: {
+          select: {
+            enrollments: true,
+          },
+        },
+      },
     });
 
     const formattedCourses = courses.map((course) => ({
       id: course.id,
       title: course.title,
-      price: course.price || 0,
+      price: course.price ?? 0,
       isPublished: course.isPublished,
       enrollmentsCount: course._count.enrollments,
       createdAt: course.createdAt.toISOString(),
     }));
 
-    return { success: true, status: 200, data: formattedCourses };
-  } catch (error) {
+    return {
+      success: true,
+      status: 200,
+      data: formattedCourses,
+    };
+  } catch (error: unknown) {
     console.error("Failed to fetch instructor courses:", error);
-    return { success: false, status: 500, message: "Internal Server Error" };
+
+    return {
+      success: false,
+      status: 500,
+      message: "Internal Server Error",
+    };
   }
 };
