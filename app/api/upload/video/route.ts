@@ -1,7 +1,8 @@
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { v4 as uuidv4 } from "uuid";
-import { getServerSession } from "next-auth";
+
+import { authMiddleware } from "@/lib/middleware/auth";
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION as string,
@@ -11,24 +12,36 @@ const s3Client = new S3Client({
   },
 });
 
-export async function POST(req: Request) {
+/**
+ * POST /api/upload/video
+ * Upload a video file to AWS S3.
+ */
+export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
-    
-    if (!session) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const auth = await authMiddleware();
+
+    if (!auth.success) {
+      return auth.error;
     }
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
+    const formData = await request.formData();
 
-    if (!file) {
-      return NextResponse.json({ message: "No file provided" }, { status: 400 });
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "No file provided",
+        },
+        { status: 400 },
+      );
     }
 
     const fileExtension = file.name.split(".").pop();
+
     const uniqueKey = `courses/videos/${uuidv4()}.${fileExtension}`;
-    
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -43,16 +56,25 @@ export async function POST(req: Request) {
 
     const videoUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
 
-    return NextResponse.json({
-      success: true,
-      url: videoUrl,
-      key: uniqueKey,
-    });
-  } catch (error) {
-    console.error("S3 upload error:", error);
     return NextResponse.json(
-      { message: "Internal server error during video upload" },
-      { status: 500 }
+      {
+        success: true,
+        data: {
+          url: videoUrl,
+          key: uniqueKey,
+        },
+      },
+      { status: 200 },
+    );
+  } catch (error: unknown) {
+    console.error("[Video Upload POST Error]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Internal server error during video upload",
+      },
+      { status: 500 },
     );
   }
 }

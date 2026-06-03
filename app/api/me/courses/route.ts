@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+
 import { getMyCourses } from "@/actions/course.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
 
-export async function GET(request: Request) {
+/**
+ * GET /api/me/courses
+ * Get all courses enrolled in by the authenticated user.
+ */
+export async function GET(_request: Request) {
   try {
     const auth = await authMiddleware();
 
@@ -30,7 +35,7 @@ export async function GET(request: Request) {
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error fetching user courses in route handler", error);
+    console.error("[My Courses GET Error]", error);
 
     return NextResponse.json(
       {

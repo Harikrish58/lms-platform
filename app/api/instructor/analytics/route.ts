@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { authMiddleware } from "@/lib/middleware/auth";
 
-export async function GET(req: Request) {
+import { authMiddleware } from "@/lib/middleware/auth";
+import { prisma } from "@/lib/prisma";
+
+/**
+ * GET /api/instructor/analytics
+ * Get analytics for the authenticated instructor.
+ */
+export async function GET(_request: Request) {
   try {
     const auth = await authMiddleware();
 
@@ -12,9 +17,10 @@ export async function GET(req: Request) {
 
     const instructorId = auth.user.id;
 
-    // Fetch all courses for this instructor to aggregate data
     const courses = await prisma.course.findMany({
-      where: { instructorId },
+      where: {
+        instructorId,
+      },
       include: {
         payments: true,
         enrollments: true,
@@ -22,38 +28,54 @@ export async function GET(req: Request) {
     });
 
     const totalRevenue = courses.reduce(
-      (acc, course) =>
-        acc + course.payments.reduce((sum, p) => sum + p.amount, 0),
+      (courseTotal, course) =>
+        courseTotal +
+        course.payments.reduce(
+          (paymentTotal, payment) => paymentTotal + Number(payment.amount),
+          0,
+        ),
       0,
     );
 
     const totalEnrollments = courses.reduce(
-      (acc, course) => acc + course.enrollments.length,
+      (total, course) => total + course.enrollments.length,
       0,
     );
 
-    const coursesWithRatings = courses.filter((c) => c.averageRating > 0);
+    const ratedCourses = courses.filter(
+      (course) => course.averageRating > 0,
+    );
+
     const averageCourseRating =
-      coursesWithRatings.length > 0
-        ? coursesWithRatings.reduce((sum, c) => sum + c.averageRating, 0) /
-          coursesWithRatings.length
+      ratedCourses.length > 0
+        ? ratedCourses.reduce(
+            (total, course) => total + course.averageRating,
+            0,
+          ) / ratedCourses.length
         : 0;
 
-    // Aggregate monthly revenue for the chart
     const revenueByMonth = courses
-      .flatMap((c) => c.payments)
-      .reduce((acc: Record<string, number>, payment) => {
-        const date = new Date(payment.createdAt);
-        const month = date.toLocaleString("default", { month: "short" });
+      .flatMap((course) => course.payments)
+      .reduce<Record<string, number>>((accumulator, payment) => {
+        const month = new Date(payment.createdAt).toLocaleString(
+          "default",
+          {
+            month: "short",
+          },
+        );
 
-        acc[month] = (acc[month] || 0) + Number(payment.amount);
-        return acc;
+        accumulator[month] =
+          (accumulator[month] || 0) + Number(payment.amount);
+
+        return accumulator;
       }, {});
 
-    const revenueData = Object.entries(revenueByMonth).map(([name, total]) => ({
-      name,
-      total,
-    }));
+    const revenueData = Object.entries(revenueByMonth).map(
+      ([name, total]) => ({
+        name,
+        total,
+      }),
+    );
 
     return NextResponse.json({
       success: true,
@@ -64,10 +86,14 @@ export async function GET(req: Request) {
         revenueData,
       },
     });
-  } catch (error) {
-    console.error("Analytics aggregation error:", error);
+  } catch (error: unknown) {
+    console.error("[Instructor Analytics GET Error]", error);
+
     return NextResponse.json(
-      { message: "Failed to aggregate instructor analytics" },
+      {
+        success: false,
+        message: "Failed to aggregate instructor analytics",
+      },
       { status: 500 },
     );
   }

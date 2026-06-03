@@ -1,4 +1,6 @@
 import { Role } from "@prisma/client";
+import { NextResponse } from "next/server";
+
 import {
   deleteCourse,
   getCourseById,
@@ -6,11 +8,20 @@ import {
 } from "@/actions/course.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
 import { requireRole } from "@/lib/utils/authorize";
-import { NextResponse } from "next/server";
 
+type RouteParams = {
+  params: Promise<{
+    courseId: string;
+  }>;
+};
+
+/**
+ * GET /api/courses/[courseId]
+ * Get a course by ID.
+ */
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ courseId: string }> },
+  { params }: RouteParams,
 ) {
   try {
     const { courseId } = await params;
@@ -45,7 +56,7 @@ export async function GET(
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error fetching course by id in route handler", error);
+    console.error("[Course GET Error]", error);
 
     return NextResponse.json(
       {
@@ -57,23 +68,15 @@ export async function GET(
   }
 }
 
+/**
+ * PATCH /api/courses/[courseId]
+ * Update a course.
+ */
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ courseId: string }> },
+  { params }: RouteParams,
 ) {
   try {
-    const { courseId } = await params;
-
-    if (!courseId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Course ID is required",
-        },
-        { status: 400 },
-      );
-    }
-
     const auth = await authMiddleware();
 
     if (!auth.success) {
@@ -89,6 +92,18 @@ export async function PATCH(
           message: roleCheck.message || "Unauthorized",
         },
         { status: roleCheck.status || 403 },
+      );
+    }
+
+    const { courseId } = await params;
+
+    if (!courseId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course ID is required",
+        },
+        { status: 400 },
       );
     }
 
@@ -119,7 +134,7 @@ export async function PATCH(
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("failed to patch course details", error);
+    console.error("[Course PATCH Error]", error);
 
     return NextResponse.json(
       {
@@ -131,23 +146,15 @@ export async function PATCH(
   }
 }
 
+/**
+ * DELETE /api/courses/[courseId]
+ * Delete a course.
+ */
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ courseId: string }> },
+  _request: Request,
+  { params }: RouteParams,
 ) {
   try {
-    const { courseId } = await params;
-
-    if (!courseId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Course ID is required",
-        },
-        { status: 400 },
-      );
-    }
-
     const auth = await authMiddleware();
 
     if (!auth.success) {
@@ -166,7 +173,23 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteCourse(courseId, auth.user.id, auth.user.role);
+    const { courseId } = await params;
+
+    if (!courseId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = await deleteCourse(
+      courseId,
+      auth.user.id,
+      auth.user.role,
+    );
 
     if (!result.success) {
       return NextResponse.json(
@@ -186,7 +209,7 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error while deleting course in route handler", error);
+    console.error("[Course DELETE Error]", error);
 
     return NextResponse.json(
       {

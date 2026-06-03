@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { authMiddleware } from "@/lib/middleware/auth";
-import { createCheckoutSession } from "@/actions/payment.actions";
 
+import { createCheckoutSession } from "@/actions/payment.actions";
+import { authMiddleware } from "@/lib/middleware/auth";
+
+/**
+ * POST /api/checkout
+ * Creates a Stripe checkout session for a course purchase.
+ */
 export async function POST(request: Request) {
   try {
     const auth = await authMiddleware();
@@ -10,11 +15,25 @@ export async function POST(request: Request) {
       return auth.error;
     }
 
-    const body = await request.json();
+    const body: { courseId?: string } = await request.json();
 
     const { courseId } = body;
 
-    const result = await createCheckoutSession(courseId, auth.user.id);
+    // Validate required payload before creating checkout session
+    if (!courseId || typeof courseId !== "string") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = await createCheckoutSession(
+      courseId,
+      auth.user.id,
+    );
 
     if (!result.success) {
       return NextResponse.json(
@@ -22,7 +41,9 @@ export async function POST(request: Request) {
           success: false,
           message: result.message,
         },
-        { status: result.status || 400 },
+        {
+          status: result.status || 400,
+        },
       );
     }
 
@@ -31,17 +52,21 @@ export async function POST(request: Request) {
         success: true,
         data: result.data,
       },
-      { status: 200 },
+      {
+        status: 200,
+      },
     );
   } catch (error: unknown) {
-    console.error("checkout route error:", error);
+    console.error("[Checkout POST Error]", error);
 
     return NextResponse.json(
       {
         success: false,
         message: "Internal Server Error",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }

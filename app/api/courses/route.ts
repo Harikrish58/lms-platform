@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+
 import { createCourse, getCourses } from "@/actions/course.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
 import { requireRole } from "@/lib/utils/authorize";
 
+/**
+ * POST /api/courses
+ * Create a new course.
+ */
 export async function POST(request: Request) {
   try {
     const auth = await authMiddleware();
@@ -24,6 +29,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+
     const result = await createCourse(body, auth.user.id);
 
     if (!result.success) {
@@ -45,7 +51,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error: unknown) {
-    console.error("error while creating course in route handler", error);
+    console.error("[Courses POST Error]", error);
 
     return NextResponse.json(
       {
@@ -57,26 +63,37 @@ export async function POST(request: Request) {
   }
 }
 
+/**
+ * GET /api/courses
+ * Get paginated and filtered courses.
+ */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const parseNum = (key: string) => {
-      const val = searchParams.get(key);
-      return val ? Number(val) : undefined;
+    const parseNumberParam = (key: string): number | undefined => {
+      const value = searchParams.get(key);
+
+      if (!value) {
+        return undefined;
+      }
+
+      const parsedValue = Number(value);
+
+      return Number.isNaN(parsedValue) ? undefined : parsedValue;
     };
 
-    const page = Math.max(1, parseNum("page") || 1);
-    const limit = Math.max(1, parseNum("limit") || 10);
+    const page = Math.max(1, parseNumberParam("page") || 1);
+    const limit = Math.max(1, parseNumberParam("limit") || 10);
     const safeLimit = Math.min(limit, 50);
 
     const result = await getCourses({
       page,
       limit: safeLimit,
       search: searchParams.get("search") || undefined,
-      minPrice: parseNum("minPrice"),
-      maxPrice: parseNum("maxPrice"),
-      minRating: parseNum("minRating"),
+      minPrice: parseNumberParam("minPrice"),
+      maxPrice: parseNumberParam("maxPrice"),
+      minRating: parseNumberParam("minRating"),
     });
 
     if (!result.success) {
@@ -98,7 +115,7 @@ export async function GET(request: Request) {
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("failed to fetch courses in route handler", error);
+    console.error("[Courses GET Error]", error);
 
     return NextResponse.json(
       {

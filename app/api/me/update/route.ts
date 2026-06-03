@@ -1,20 +1,28 @@
 import { NextResponse } from "next/server";
+
+import { authMiddleware } from "@/lib/middleware/auth";
 import { prisma } from "@/lib/prisma";
-import { verifyAuth } from "@/lib/middleware/auth"; // Using your existing auth utility
 
-export async function PATCH(req: Request) {
+/**
+ * PATCH /api/me/update
+ * Update the authenticated user's profile.
+ */
+export async function PATCH(request: Request) {
   try {
-    const session = await verifyAuth();
+    const auth = await authMiddleware();
 
-    if (!session) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!auth.success) {
+      return auth.error;
     }
 
-    const body = await req.json();
+    const body = await request.json();
+
     const { name, avatarUrl } = body;
 
     const updatedUser = await prisma.user.update({
-      where: { id: session.id },
+      where: {
+        id: auth.user.id,
+      },
       data: {
         name,
         avatarUrl,
@@ -28,11 +36,21 @@ export async function PATCH(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, data: updatedUser });
-  } catch (error) {
-    console.error("Profile update error:", error);
     return NextResponse.json(
-      { message: "Failed to update profile" },
+      {
+        success: true,
+        data: updatedUser,
+      },
+      { status: 200 },
+    );
+  } catch (error: unknown) {
+    console.error("[Profile Update PATCH Error]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to update profile",
+      },
       { status: 500 },
     );
   }

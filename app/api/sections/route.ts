@@ -1,9 +1,14 @@
-import { createSection, getSectionsByCourse } from "@/actions/section.actions";
-import { authMiddleware } from "@/lib/middleware/auth";
-import { requireRole } from "@/lib/utils/authorize";
 import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
 
+import { createSection, getSectionsByCourse } from "@/actions/section.actions";
+import { authMiddleware } from "@/lib/middleware/auth";
+import { requireRole } from "@/lib/utils/authorize";
+
+/**
+ * POST /api/sections
+ * Create a new section for a course.
+ */
 export async function POST(request: Request) {
   try {
     const auth = await authMiddleware();
@@ -29,7 +34,10 @@ export async function POST(request: Request) {
 
     if (!courseId) {
       return NextResponse.json(
-        { success: false, message: "Course ID is required" },
+        {
+          success: false,
+          message: "Course ID is required",
+        },
         { status: 400 },
       );
     }
@@ -62,7 +70,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error: unknown) {
-    console.error("error creating section in route handler:", error);
+    console.error("[Section POST Error]", error);
 
     return NextResponse.json(
       {
@@ -74,6 +82,10 @@ export async function POST(request: Request) {
   }
 }
 
+/**
+ * GET /api/sections
+ * Get all sections for a course.
+ */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -81,7 +93,10 @@ export async function GET(request: Request) {
 
     if (!courseId) {
       return NextResponse.json(
-        { success: false, message: "Course ID is required" },
+        {
+          success: false,
+          message: "Course ID is required",
+        },
         { status: 400 },
       );
     }
@@ -106,7 +121,7 @@ export async function GET(request: Request) {
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error fetching sections in route handler", error);
+    console.error("[Section GET Error]", error);
 
     return NextResponse.json(
       {
