@@ -1,17 +1,26 @@
-import { stripe } from "@/lib/stripe";
-import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { NextResponse } from "next/server";
+
+import { prisma } from "@/lib/prisma";
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
+/**
+ * POST /api/webhook/stripe
+ * Handle Stripe webhook events.
+ */
 export async function POST(request: Request) {
   const body = await request.text();
+
   const signature = request.headers.get("stripe-signature");
 
   if (!signature) {
     return NextResponse.json(
-      { success: false, message: "Missing signature" },
+      {
+        success: false,
+        message: "Missing signature",
+      },
       { status: 400 },
     );
   }
@@ -24,15 +33,18 @@ export async function POST(request: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!,
     );
-  } catch (error) {
-    console.error("Webhook signature verification failed:", error);
+  } catch (error: unknown) {
+    console.error("[Stripe Webhook Verification Error]", error);
+
     return NextResponse.json(
-      { success: false, message: "Invalid signature" },
+      {
+        success: false,
+        message: "Invalid signature",
+      },
       { status: 400 },
     );
   }
 
-  // Handle event
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
@@ -40,19 +52,27 @@ export async function POST(request: Request) {
     const userId = session.metadata?.userId;
 
     if (!courseId || !userId) {
-      console.error("Missing metadata in session");
-      return NextResponse.json({ received: true });
+      console.error("[Stripe Webhook Error] Missing session metadata");
+
+      return NextResponse.json(
+        {
+          received: true,
+        },
+        { status: 200 },
+      );
     }
 
     try {
-      // Mark payment as COMPLETED
       await prisma.payment.update({
-        where: { stripeSessionId: session.id },
-        data: { status: "COMPLETED" },
+        where: {
+          stripeSessionId: session.id,
+        },
+        data: {
+          status: "COMPLETED",
+        },
       });
 
-      // Prevent double enrollment
-      const existing = await prisma.enrollment.findUnique({
+      const existingEnrollment = await prisma.enrollment.findUnique({
         where: {
           userId_courseId: {
             userId,
@@ -61,8 +81,7 @@ export async function POST(request: Request) {
         },
       });
 
-      // Enroll user
-      if (!existing) {
+      if (!existingEnrollment) {
         await prisma.enrollment.create({
           data: {
             userId,
@@ -70,12 +89,15 @@ export async function POST(request: Request) {
           },
         });
       }
-
-      console.log("Payment completed + user enrolled");
-    } catch (error) {
-      console.error("Error processing webhook:", error);
+    } catch (error: unknown) {
+      console.error("[Stripe Webhook Processing Error]", error);
     }
   }
 
-  return NextResponse.json({ received: true });
+  return NextResponse.json(
+    {
+      received: true,
+    },
+    { status: 200 },
+  );
 }

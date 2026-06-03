@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 
+/**
+ * POST /api/logout
+ * Clear the authentication cookie.
+ */
 export async function POST() {
   try {
     const response = NextResponse.json(
@@ -21,8 +25,8 @@ export async function POST() {
     });
 
     return response;
-  } catch (error) {
-    console.error("Error during logout:", error);
+  } catch (error: unknown) {
+    console.error("[Logout POST Error]", error);
 
     return NextResponse.json(
       {

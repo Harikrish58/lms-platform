@@ -1,24 +1,23 @@
-import { authMiddleware, verifyAuth } from "@/lib/middleware/auth";
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+import { authMiddleware } from "@/lib/middleware/auth";
+import { prisma } from "@/lib/prisma";
+
+/**
+ * GET /api/me
+ * Get the authenticated user's profile.
+ */
 export async function GET() {
   try {
-    const session = await verifyAuth();
+    const auth = await authMiddleware();
 
-    if (!session) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Unauthorized",
-        },
-        { status: 401 },
-      );
+    if (!auth.success) {
+      return auth.error;
     }
 
     const user = await prisma.user.findUnique({
       where: {
-        id: session.id,
+        id: auth.user.id,
       },
       select: {
         id: true,
@@ -46,8 +45,8 @@ export async function GET() {
       },
       { status: 200 },
     );
-  } catch (error) {
-    console.error("Error fetching user data:", error);
+  } catch (error: unknown) {
+    console.error("[Me GET Error]", error);
 
     return NextResponse.json(
       {
@@ -59,17 +58,30 @@ export async function GET() {
   }
 }
 
-export async function PATCH(req: Request) {
+/**
+ * PATCH /api/me
+ * Update the authenticated user's profile.
+ */
+export async function PATCH(request: Request) {
   try {
     const auth = await authMiddleware();
-    if (!auth.success) return auth.error;
 
-    const body = await req.json();
+    if (!auth.success) {
+      return auth.error;
+    }
+
+    const body = await request.json();
+
     const { name, avatarUrl } = body;
 
     const updatedUser = await prisma.user.update({
-      where: { id: auth.user.id },
-      data: { name, avatarUrl },
+      where: {
+        id: auth.user.id,
+      },
+      data: {
+        name,
+        avatarUrl,
+      },
       select: {
         id: true,
         name: true,
@@ -79,11 +91,21 @@ export async function PATCH(req: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, data: updatedUser });
-  } catch (error) {
-    console.error("Error updating user profile:", error);
     return NextResponse.json(
-      { message: "Failed to update profile" },
+      {
+        success: true,
+        data: updatedUser,
+      },
+      { status: 200 },
+    );
+  } catch (error: unknown) {
+    console.error("[Me PATCH Error]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to update profile",
+      },
       { status: 500 },
     );
   }

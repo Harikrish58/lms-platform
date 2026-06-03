@@ -1,12 +1,29 @@
-import { getLessonsBySection } from "@/actions/lesson.actions";
-import { authMiddleware } from "@/lib/middleware/auth";
 import { NextResponse } from "next/server";
 
+import { getLessonsBySection } from "@/actions/lesson.actions";
+import { authMiddleware } from "@/lib/middleware/auth";
+
+type RouteParams = {
+  params: Promise<{
+    sectionId: string;
+  }>;
+};
+
+/**
+ * GET /api/sections/[sectionId]/lessons
+ * Get all lessons for a section.
+ */
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ sectionId: string }> },
+  _request: Request,
+  { params }: RouteParams,
 ) {
   try {
+    const auth = await authMiddleware();
+
+    if (!auth.success) {
+      return auth.error;
+    }
+
     const { sectionId } = await params;
 
     if (!sectionId) {
@@ -17,12 +34,6 @@ export async function GET(
         },
         { status: 400 },
       );
-    }
-
-    const auth = await authMiddleware();
-
-    if (!auth.success) {
-      return auth.error;
     }
 
     const result = await getLessonsBySection(
@@ -49,7 +60,7 @@ export async function GET(
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error fetching lessons in route handler", error);
+    console.error("[Section Lessons GET Error]", error);
 
     return NextResponse.json(
       {

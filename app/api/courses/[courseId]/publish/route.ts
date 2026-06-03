@@ -1,23 +1,25 @@
-import { toggleCoursePublishStatus } from "@/actions/course.actions";
-import { authMiddleware } from "@/lib/middleware/auth";
 import { Role } from "@prisma/client";
-import { requireRole } from "@/lib/utils/authorize";
 import { NextResponse } from "next/server";
 
+import { toggleCoursePublishStatus } from "@/actions/course.actions";
+import { authMiddleware } from "@/lib/middleware/auth";
+import { requireRole } from "@/lib/utils/authorize";
+
+type RouteParams = {
+  params: Promise<{
+    courseId: string;
+  }>;
+};
+
+/**
+ * PATCH /api/courses/[courseId]/publish
+ * Toggle course publish status.
+ */
 export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ courseId: string }> },
+  _request: Request,
+  { params }: RouteParams,
 ) {
   try {
-    const { courseId } = await params;
-
-    if (!courseId) {
-      return NextResponse.json(
-        { success: false, message: "Course ID is required" },
-        { status: 400 },
-      );
-    }
-
     const auth = await authMiddleware();
 
     if (!auth.success) {
@@ -31,8 +33,23 @@ export async function PATCH(
 
     if (!roleCheck.success) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 403 },
+        {
+          success: false,
+          message: roleCheck.message || "Unauthorized",
+        },
+        { status: roleCheck.status || 403 },
+      );
+    }
+
+    const { courseId } = await params;
+
+    if (!courseId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course ID is required",
+        },
+        { status: 400 },
       );
     }
 
@@ -44,7 +61,10 @@ export async function PATCH(
 
     if (!result.success) {
       return NextResponse.json(
-        { success: false, message: result.message },
+        {
+          success: false,
+          message: result.message,
+        },
         { status: result.status || 400 },
       );
     }
@@ -58,10 +78,13 @@ export async function PATCH(
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error in course publish route", error);
+    console.error("[Course Publish PATCH Error]", error);
 
     return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
+      {
+        success: false,
+        message: "Internal Server Error",
+      },
       { status: 500 },
     );
   }

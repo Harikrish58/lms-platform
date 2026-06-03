@@ -1,26 +1,25 @@
+import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
+
+import { deleteSection, updateSection } from "@/actions/section.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
 import { requireRole } from "@/lib/utils/authorize";
-import { deleteSection, updateSection } from "@/actions/section.actions";
-import { Role } from "@prisma/client";
 
+type RouteParams = {
+  params: Promise<{
+    sectionId: string;
+  }>;
+};
+
+/**
+ * PATCH /api/sections/[sectionId]
+ * Update a section.
+ */
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ sectionId: string }> },
+  { params }: RouteParams,
 ) {
   try {
-    const { sectionId } = await params;
-
-    if (!sectionId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Section ID is required",
-        },
-        { status: 400 },
-      );
-    }
-
     const auth = await authMiddleware();
 
     if (!auth.success) {
@@ -36,6 +35,18 @@ export async function PATCH(
           message: roleCheck.message || "Unauthorized",
         },
         { status: roleCheck.status || 403 },
+      );
+    }
+
+    const { sectionId } = await params;
+
+    if (!sectionId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Section ID is required",
+        },
+        { status: 400 },
       );
     }
 
@@ -68,7 +79,7 @@ export async function PATCH(
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error updating section in route handler", error);
+    console.error("[Section PATCH Error]", error);
 
     return NextResponse.json(
       {
@@ -80,23 +91,15 @@ export async function PATCH(
   }
 }
 
+/**
+ * DELETE /api/sections/[sectionId]
+ * Delete a section.
+ */
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ sectionId: string }> },
+  _request: Request,
+  { params }: RouteParams,
 ) {
   try {
-    const { sectionId } = await params;
-
-    if (!sectionId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Section ID is required",
-        },
-        { status: 400 },
-      );
-    }
-
     const auth = await authMiddleware();
 
     if (!auth.success) {
@@ -115,7 +118,23 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteSection(sectionId, auth.user.id, auth.user.role);
+    const { sectionId } = await params;
+
+    if (!sectionId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Section ID is required",
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = await deleteSection(
+      sectionId,
+      auth.user.id,
+      auth.user.role,
+    );
 
     if (!result.success) {
       return NextResponse.json(
@@ -135,7 +154,7 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error deleting section in route handler", error);
+    console.error("[Section DELETE Error]", error);
 
     return NextResponse.json(
       {

@@ -1,9 +1,14 @@
-import { registerUser } from "@/actions/user.actions";
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+import { registerUser } from "@/actions/user.actions";
+
+/**
+ * POST /api/register
+ * Register a new user and set the authentication cookie.
+ */
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
+    const body = await request.json();
 
     const result = await registerUser(body);
 
@@ -14,6 +19,16 @@ export async function POST(req: Request) {
           message: result.message,
         },
         { status: result.status },
+      );
+    }
+
+    if (!result.token) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Token generation failed",
+        },
+        { status: 500 },
       );
     }
 
@@ -29,7 +44,7 @@ export async function POST(req: Request) {
 
     response.cookies.set({
       name: "token",
-      value: result.token!,
+      value: result.token,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -38,8 +53,8 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch (error) {
-    console.error("Registration error:", error);
+  } catch (error: unknown) {
+    console.error("[Register POST Error]", error);
 
     return NextResponse.json(
       {

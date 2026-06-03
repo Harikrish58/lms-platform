@@ -1,9 +1,20 @@
-import { getReviewSummary } from "@/actions/review.actions";
 import { NextResponse } from "next/server";
 
+import { getReviewSummary } from "@/actions/review.actions";
+
+type RouteParams = {
+  params: Promise<{
+    courseId: string;
+  }>;
+};
+
+/**
+ * GET /api/courses/[courseId]/reviews/summary
+ * Get review summary for a course.
+ */
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ courseId: string }> },
+  { params }: RouteParams,
 ) {
   try {
     const { courseId } = await params;
@@ -38,7 +49,8 @@ export async function GET(
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("failed to get review summary in route handler", error);
+    console.error("[Review Summary GET Error]", error);
+
     return NextResponse.json(
       {
         success: false,

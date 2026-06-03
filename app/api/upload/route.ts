@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { NextResponse } from "next/server";
+
 import { authMiddleware } from "@/lib/middleware/auth";
 
 cloudinary.config({
@@ -8,32 +9,59 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function POST(req: Request) {
+/**
+ * POST /api/upload
+ * Upload a file to Cloudinary.
+ */
+export async function POST(request: Request) {
   try {
     const auth = await authMiddleware();
-    if (!auth.success) return auth.error;
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
+    if (!auth.success) {
+      return auth.error;
+    }
 
-    if (!file) {
+    const formData = await request.formData();
+
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
       return NextResponse.json(
-        { message: "No file provided" },
+        {
+          success: false,
+          message: "No file provided",
+        },
         { status: 400 },
       );
     }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
     const base64Image = `data:${file.type};base64,${buffer.toString("base64")}`;
 
     const uploadResponse = await cloudinary.uploader.upload(base64Image, {
       folder: "lms_platform",
     });
 
-    return NextResponse.json({ url: uploadResponse.secure_url });
-  } catch (error) {
-    console.error("Upload error:", error);
-    return NextResponse.json({ message: "Upload failed" }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          url: uploadResponse.secure_url,
+        },
+      },
+      { status: 200 },
+    );
+  } catch (error: unknown) {
+    console.error("[Upload POST Error]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Upload failed",
+      },
+      { status: 500 },
+    );
   }
 }

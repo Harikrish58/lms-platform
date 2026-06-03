@@ -1,30 +1,61 @@
 import { NextResponse } from "next/server";
-import { authMiddleware } from "@/lib/middleware/auth";
-import { getInstructorCourses } from "@/actions/course.actions";
+import { Role } from "@prisma/client";
 
-// This route now correctly returns the LIST of courses for your dashboard table
-export async function GET(req: Request) {
+import { getInstructorCourses } from "@/actions/course.actions";
+import { authMiddleware } from "@/lib/middleware/auth";
+import { requireRole } from "@/lib/utils/authorize";
+
+/**
+ * GET /api/instructor/courses
+ * Get all courses created by the authenticated instructor.
+ */
+export async function GET(_request: Request) {
   try {
     const auth = await authMiddleware();
 
-    if (!auth.success || auth.user.role !== "INSTRUCTOR") {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+    if (!auth.success) {
+      return auth.error;
+    }
+
+    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
+    if (!roleCheck.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: roleCheck.message || "Unauthorized",
+        },
+        { status: roleCheck.status || 403 },
+      );
     }
 
     const result = await getInstructorCourses(auth.user.id);
 
     if (!result.success) {
       return NextResponse.json(
-        { message: result.message },
-        { status: result.status },
+        {
+          success: false,
+          message: result.message,
+        },
+        { status: result.status || 400 },
       );
     }
 
-    return NextResponse.json({ success: true, data: result.data });
-  } catch (error) {
-    console.error("Dashboard route handler error:", error);
     return NextResponse.json(
-      { message: "Internal server error" },
+      {
+        success: true,
+        data: result.data,
+      },
+      { status: 200 },
+    );
+  } catch (error: unknown) {
+    console.error("[Instructor Courses GET Error]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Internal Server Error",
+      },
       { status: 500 },
     );
   }

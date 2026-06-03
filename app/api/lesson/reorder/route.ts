@@ -1,9 +1,14 @@
+import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
+
+import { reorderLessons } from "@/actions/lesson.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
 import { requireRole } from "@/lib/utils/authorize";
-import { reorderLessons } from "@/actions/lesson.actions";
-import { Role } from "@prisma/client";
 
+/**
+ * PATCH /api/lesson/reorder
+ * Reorder lessons within a section.
+ */
 export async function PATCH(request: Request) {
   try {
     const auth = await authMiddleware();
@@ -13,6 +18,7 @@ export async function PATCH(request: Request) {
     }
 
     const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+
     if (!roleCheck.success) {
       return NextResponse.json(
         {
@@ -64,7 +70,8 @@ export async function PATCH(request: Request) {
       { status: 200 },
     );
   } catch (error: unknown) {
-    console.error("error reordering lessons in route handler", error);
+    console.error("[Lesson Reorder PATCH Error]", error);
+
     return NextResponse.json(
       {
         success: false,

@@ -1,12 +1,29 @@
-import { enrollInCourse } from "@/actions/enrollment.actions";
-import { authMiddleware } from "@/lib/middleware/auth";
 import { NextResponse } from "next/server";
 
+import { enrollInCourse } from "@/actions/enrollment.actions";
+import { authMiddleware } from "@/lib/middleware/auth";
+
+type RouteParams = {
+  params: Promise<{
+    courseId: string;
+  }>;
+};
+
+/**
+ * POST /api/enroll/[courseId]
+ * Enroll the authenticated user in a course.
+ */
 export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ courseId: string }> },
+  _request: Request,
+  { params }: RouteParams,
 ) {
   try {
+    const auth = await authMiddleware();
+
+    if (!auth.success) {
+      return auth.error;
+    }
+
     const { courseId } = await params;
 
     if (!courseId) {
@@ -17,12 +34,6 @@ export async function POST(
         },
         { status: 400 },
       );
-    }
-
-    const auth = await authMiddleware();
-
-    if (!auth.success) {
-      return auth.error;
     }
 
     const result = await enrollInCourse(auth.user.id, courseId);
@@ -46,7 +57,7 @@ export async function POST(
       { status: 201 },
     );
   } catch (error: unknown) {
-    console.error("error during course enrollment in route handler", error);
+    console.error("[Enrollment POST Error]", error);
 
     return NextResponse.json(
       {

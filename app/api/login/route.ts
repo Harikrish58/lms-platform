@@ -1,13 +1,17 @@
-import {
-  validateUserCredentials,
-  AUTH_COOKIE_MAX_AGE,
-} from "@/actions/user.actions";
-
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+import {
+  AUTH_COOKIE_MAX_AGE,
+  validateUserCredentials,
+} from "@/actions/user.actions";
+
+/**
+ * POST /api/login
+ * Authenticate a user and set the auth cookie.
+ */
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
+    const body = await request.json();
 
     const result = await validateUserCredentials(body);
 
@@ -43,17 +47,15 @@ export async function POST(req: Request) {
 
     response.cookies.set("token", result.token, {
       httpOnly: true,
-      secure: false, // localhost dev
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: AUTH_COOKIE_MAX_AGE,
       path: "/",
     });
 
-    console.log("COOKIE SET SUCCESSFULLY");
-
     return response;
-  } catch (error) {
-    console.error("Login error:", error);
+  } catch (error: unknown) {
+    console.error("[Login POST Error]", error);
 
     return NextResponse.json(
       {
