@@ -22,6 +22,7 @@ if (!JWT_SECRET) {
  * - User authentication
  * - JWT generation
  * - User profile updates
+ * - User password updates
  */
 
 export const registerUser = async (data: unknown) => {
@@ -61,6 +62,10 @@ export const registerUser = async (data: unknown) => {
         name,
         password: hashedPassword,
         role: "STUDENT",
+
+        preferences: {
+          create: {},
+        },
       },
       select: {
         id: true,
@@ -126,10 +131,7 @@ export const validateUserCredentials = async (data: unknown) => {
       };
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      user.password,
-    );
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       return {
@@ -202,14 +204,87 @@ export const updateUserProfile = async (
       data: user,
     };
   } catch (error: unknown) {
-    console.error(
-      `Failed to update profile for user ${userId}`,
-      error,
-    );
+    console.error(`Failed to update profile for user ${userId}`, error);
 
     return {
       success: false,
       message: "Internal Server Error",
     };
   }
+};
+
+export const updateUserPassword = async (
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.password) {
+      return { success: false, message: "User not found" };
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return { success: false, message: "Current password is incorrect" };
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return { success: true, message: "Password updated successfully" };
+  } catch (error) {
+    console.error("Password update error", error);
+    return { success: false, message: "Internal Server Error" };
+  }
+};
+
+export const getUserLearningStats = async (userId: string) => {
+  const enrolledCourses = await prisma.enrollment.count({
+    where: { userId },
+  });
+
+  const completedCourses = await prisma.enrollment.count({
+    where: {
+      userId,
+      isComplete: true,
+    },
+  });
+
+  const completedLessons = await prisma.progress.count({
+    where: {
+      userId,
+      completed: true,
+    },
+  });
+
+  const courses = await prisma.course.findMany({
+    where: {
+      enrollments: {
+        some: {
+          userId,
+        },
+      },
+    },
+    select: {
+      durationMinutes: true,
+    },
+  });
+
+  const totalMinutes = courses.reduce(
+    (acc, course) => acc + (course.durationMinutes || 0),
+    0,
+  );
+
+  const learningHours = Math.round(totalMinutes / 60);
+
+  return {
+    enrolledCourses,
+    completedCourses,
+    completedLessons,
+    learningHours,
+  };
 };

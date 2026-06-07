@@ -8,7 +8,6 @@ import axios from "@/lib/axios";
 import {
   Trophy,
   ArrowRight,
-  RotateCcw,
   CheckCircle2,
   Star,
   Download,
@@ -22,6 +21,19 @@ type Course = {
   title: string;
 };
 
+interface CourseResponse {
+  data: Course;
+}
+
+interface ProgressResponse {
+  data: {
+    // Defines the expected progress shape
+    progressPercentage?: number;
+    isCompleted?: boolean;
+    [key: string]: unknown;
+  };
+}
+
 export default function CourseCompletedPage({
   params,
 }: {
@@ -32,90 +44,119 @@ export default function CourseCompletedPage({
   const [isReviewOpen, setIsReviewOpen] = useState(false);
 
   // Fetch Course details
-  const { data: courseData, isLoading: courseLoading } = useQuery({
+  const { 
+    data: courseData, 
+    isLoading: courseLoading,
+    isError: isCourseError 
+  } = useQuery<CourseResponse>({
     queryKey: ["course", courseId],
     queryFn: () => getCourseById(courseId),
+    enabled: !!courseId,
   });
 
-  const course: Course | undefined = courseData?.data;
+  const course = courseData?.data;
 
   // Fetch Progress
-  const { data: progressData } = useQuery({
+  const { 
+    data: progressData,
+    isError: isProgressError
+  } = useQuery<ProgressResponse>({
     queryKey: ["progress", courseId],
     queryFn: async () => {
       const res = await axios.get(`/api/courses/${courseId}/progress`);
       return res.data;
     },
+    enabled: !!courseId,
   });
 
   const progress = progressData?.data;
 
+  // Loading State
   if (courseLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="w-16 h-16 bg-slate-100 rounded-full mb-4" />
-          <div className="h-4 w-48 bg-slate-100 rounded" />
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="flex animate-pulse flex-col items-center">
+          <div className="mb-4 h-16 w-16 rounded-full bg-slate-100" />
+          <div className="h-4 w-48 rounded bg-slate-100" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error State
+  if (isCourseError || !course) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-6">
+        <div className="text-center">
+          <p className="mb-4 text-lg font-bold text-rose-600">
+            Failed to load course details.
+          </p>
+          <button
+            onClick={() => router.push("/courses")}
+            className="font-bold text-teal-600 transition-colors hover:text-teal-700"
+          >
+            Return to courses
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fcfcfd] px-6 py-12 relative overflow-hidden">
-      <div className="max-w-2xl w-full bg-white rounded-[2.5rem] shadow-2xl shadow-indigo-100/50 p-8 md:p-16 text-center border border-slate-100 relative z-10">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 px-6 py-12">
+      <div className="relative z-10 w-full max-w-2xl rounded-[2.5rem] border border-slate-100 bg-white p-8 text-center shadow-2xl shadow-teal-100/50 md:p-16">
+        
         {/* Animated Trophy Icon */}
-        <div className="relative w-32 h-32 mx-auto mb-8">
-          <div className="absolute inset-0 bg-indigo-100 rounded-full animate-ping opacity-20" />
-          <div className="relative w-full h-full rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-200">
-            <Trophy className="text-white w-14 h-14" />
+        <div className="relative mx-auto mb-8 h-32 w-32">
+          <div className="absolute inset-0 animate-ping rounded-full bg-teal-100 opacity-20" />
+          <div className="relative flex h-full w-full items-center justify-center rounded-full bg-gradient-to-tr from-teal-600 to-teal-700 shadow-lg shadow-teal-200">
+            <Trophy className="h-14 w-14 text-white" />
           </div>
-          <div className="absolute -bottom-2 -right-2 bg-emerald-500 rounded-full p-2 border-4 border-white">
-            <CheckCircle2 className="text-white w-6 h-6" />
+          <div className="absolute -bottom-2 -right-2 rounded-full border-4 border-white bg-emerald-500 p-2">
+            <CheckCircle2 className="h-6 w-6 text-white" />
           </div>
         </div>
 
-        <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">
+        <h1 className="mb-4 text-4xl font-black tracking-tight text-slate-900">
           Congratulations!
         </h1>
-        <p className="text-slate-500 text-lg mb-10 max-w-md mx-auto leading-relaxed">
+        <p className="mx-auto mb-10 max-w-md text-lg leading-relaxed text-slate-500">
           You&apos;ve mastered the curriculum and completed all requirements for
           this course.
         </p>
 
-        <div className="bg-slate-50 rounded-3xl p-6 mb-10 border border-slate-100 text-left flex items-center gap-5">
-          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-200 shrink-0">
-            <Star className="text-amber-400 fill-amber-400" size={24} />
+        <div className="mb-10 flex items-center gap-5 rounded-3xl border border-slate-100 bg-slate-50 p-6 text-left">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <Star className="fill-amber-400 text-amber-400" size={24} />
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-1">
+            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
               Earned Certificate
             </p>
-            <h2 className="font-bold text-slate-900 text-lg leading-tight">
-              {course?.title}
+            <h2 className="text-lg font-bold leading-tight text-slate-900">
+              {course.title}
             </h2>
           </div>
         </div>
 
-        {progress && (
+        {progress && !isProgressError && (
           <div className="mb-10 px-4">
-            <div className="flex justify-between text-xs font-black uppercase tracking-tighter mb-3 text-slate-400">
+            <div className="mb-3 flex justify-between text-xs font-black uppercase tracking-tighter text-slate-400">
               <span>Final Completion Status</span>
               <span className="text-emerald-600">100% Verified</span>
             </div>
-            <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-1 border border-slate-200">
+            <div className="h-3 overflow-hidden rounded-full border border-slate-200 bg-slate-100 p-1">
               <div
-                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-1000 ease-out shadow-sm"
-                style={{ width: "100%" }}
+                className="h-full w-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-sm transition-all duration-1000 ease-out"
               />
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <button
             onClick={() => setIsReviewOpen(true)}
-            className="flex items-center justify-center gap-2 px-8 py-4 border-2 border-slate-200 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 px-8 py-4 font-bold text-slate-600 transition-all hover:bg-slate-50 active:scale-95"
           >
             <Star size={18} />
             Rate Course
@@ -123,7 +164,7 @@ export default function CourseCompletedPage({
 
           <button
             onClick={() => router.push("/courses")}
-            className="flex items-center justify-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95"
+            className="flex items-center justify-center gap-2 rounded-2xl bg-teal-600 px-8 py-4 font-bold text-white shadow-xl shadow-teal-100 transition-all hover:bg-teal-700 active:scale-95"
           >
             Explore More
             <ArrowRight size={18} />
@@ -131,10 +172,10 @@ export default function CourseCompletedPage({
         </div>
 
         <div className="mt-10 flex items-center justify-center gap-8 border-t border-slate-100 pt-8">
-          <button className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors">
+          <button className="flex items-center gap-2 text-sm font-bold text-slate-400 transition-colors hover:text-teal-600">
             <Download size={16} /> Certificate
           </button>
-          <button className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors">
+          <button className="flex items-center gap-2 text-sm font-bold text-slate-400 transition-colors hover:text-teal-600">
             <Share2 size={16} /> Share Result
           </button>
         </div>
@@ -146,8 +187,9 @@ export default function CourseCompletedPage({
         onClose={() => setIsReviewOpen(false)}
       />
 
-      <div className="absolute top-[-10%] left-[-5%] w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-60" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-96 h-96 bg-emerald-50 rounded-full blur-3xl opacity-60" />
+      {/* Decorative Elements */}
+      <div aria-hidden="true" className="absolute left-[-5%] top-[-10%] h-64 w-64 rounded-full bg-teal-50 opacity-60 blur-3xl" />
+      <div aria-hidden="true" className="absolute bottom-[-10%] right-[-5%] h-96 w-96 rounded-full bg-emerald-50 opacity-60 blur-3xl" />
     </div>
   );
 }

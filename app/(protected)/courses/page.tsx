@@ -63,7 +63,7 @@ export default function CoursesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   // Initialize state from URL parameters for bookmarking and SEO
   const [queryState, setQueryState] = useState<QueryState>({
@@ -114,7 +114,7 @@ export default function CoursesPage() {
   );
 
   // Core data fetching hook with stale-while-revalidate strategy
-  const { data, isLoading, isFetching, isError } = useQuery<CoursesResponse>({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery<CoursesResponse>({
     queryKey: ["courses", queryParams],
     queryFn: () => getCourses(queryParams),
     staleTime: 1000 * 60 * 5,
@@ -144,16 +144,16 @@ export default function CoursesPage() {
 
   if (isError)
     return (
-      <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
-        <div className="bg-red-50 p-4 rounded-full text-red-500">
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+        <div className="rounded-full bg-rose-50 p-4 text-rose-600">
           <BookOpen size={40} />
         </div>
-        <p className="text-slate-600 font-bold">
+        <p className="font-bold text-slate-600">
           We couldn&apos;t load the catalog.
         </p>
         <button
-          onClick={() => window.location.reload()}
-          className="text-indigo-600 underline"
+          onClick={() => refetch()}
+          className="text-teal-600 underline transition-colors hover:text-teal-700"
         >
           Try again
         </button>
@@ -161,45 +161,46 @@ export default function CoursesPage() {
     );
 
   return (
-    <div className="bg-[#fcfcfd] min-h-screen">
+    <div className="min-h-screen bg-slate-50">
       {/* Hero Header and Search Input */}
-      <div className="bg-slate-900 text-white py-16 px-16">
-        <div className="max-w-7xl mx-auto">
+      <div className="bg-slate-900 px-16 py-16 text-white">
+        <div className="mx-auto max-w-7xl">
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl font-black mb-6 tracking-tight"
+            className="mb-6 text-4xl font-black tracking-tight md:text-5xl"
           >
             Advance your career.
           </motion.h1>
 
-          <div className="relative max-w-2xl group">
+          <div className="group relative max-w-2xl">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-400 transition-colors"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-teal-600"
               size={20}
             />
             <input
+              aria-label="Search courses"
               value={queryState.search}
               onChange={(e) => updateQuery({ search: e.target.value })}
               placeholder="Search for software, skills, or instructors..."
-              className="w-full pl-12 pr-4 py-4 rounded-lg text-white shadow-2xl focus:ring-4 focus:ring-indigo-500/20 outline-1 font-medium text-lg transition-all"
+              className="w-full rounded-lg py-4 pl-12 pr-4 text-lg font-medium text-slate-900 shadow-2xl outline-1 transition-all focus:ring-4 focus:ring-teal-600/20"
             />
           </div>
         </div>
       </div>
 
       {/* Filter and Sorting Sticky Bar */}
-      <div className="bg-white border-b sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-6">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+      <div className="sticky top-0 z-20 border-b bg-white">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-6 py-4">
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto py-1">
             {["All", "Development", "Design", "Business"].map((c) => (
               <button
                 key={c}
                 onClick={() => updateQuery({ category: c, page: 1 })}
-                className={`px-5 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${
+                className={`whitespace-nowrap rounded-full px-5 py-2 text-sm font-bold transition-all ${
                   queryState.category === c
                     ? "bg-slate-900 text-white"
-                    : "text-slate-500 hover:bg-slate-50 border border-transparent hover:border-slate-200"
+                    : "border border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50"
                 }`}
               >
                 {c}
@@ -210,9 +211,10 @@ export default function CoursesPage() {
           <div className="flex items-center gap-3">
             <Filter size={16} className="text-slate-400" />
             <select
+              aria-label="Sort courses"
               value={queryState.sort}
               onChange={(e) => updateQuery({ sort: e.target.value, page: 1 })}
-              className="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-sm"
+              className="cursor-pointer bg-transparent text-sm font-bold text-slate-700 focus:outline-none"
             >
               <option value="popular">Most Popular</option>
               <option value="newest">Newest</option>
@@ -222,10 +224,10 @@ export default function CoursesPage() {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="mx-auto max-w-7xl px-6 py-12">
         {/* Course Grid and Content State Management */}
         <div
-          className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-12 transition-opacity duration-300 ${
+          className={`grid grid-cols-1 gap-x-6 gap-y-12 transition-opacity duration-300 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${
             isFetching && !isLoading ? "opacity-60" : "opacity-100"
           }`}
         >
@@ -245,19 +247,19 @@ export default function CoursesPage() {
 
         {/* Empty state handling */}
         {!isLoading && courses.length === 0 && (
-          <div className="text-center py-24 border-2 border-dashed border-slate-200 rounded-3xl">
-            <Search className="mx-auto text-slate-200 mb-4" size={64} />
+          <div className="rounded-3xl border-2 border-dashed border-slate-200 py-24 text-center">
+            <Search className="mx-auto mb-4 text-slate-200" size={64} />
             <h2 className="text-xl font-black text-slate-900">
               No matching courses
             </h2>
-            <p className="text-slate-500 mt-2">
+            <p className="mt-2 text-slate-500">
               Try adjusting your filters or search keywords.
             </p>
             <button
               onClick={() =>
                 updateQuery({ search: "", category: "All", page: 1 })
               }
-              className="mt-6 text-indigo-600 font-bold hover:underline"
+              className="mt-6 font-bold text-teal-600 hover:underline"
             >
               Clear all filters
             </button>
@@ -266,11 +268,11 @@ export default function CoursesPage() {
 
         {/* Dynamic Pagination Control */}
         {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-20 pt-8 border-t">
+          <div className="mt-20 flex items-center justify-center gap-2 border-t pt-8">
             <button
               disabled={queryState.page === 1}
               onClick={() => updateQuery({ page: queryState.page - 1 })}
-              className="p-3 rounded-full hover:bg-slate-100 disabled:opacity-20 transition-colors"
+              className="rounded-full p-3 transition-colors hover:bg-slate-100 disabled:opacity-20"
             >
               <ChevronLeft size={24} />
             </button>
@@ -287,10 +289,10 @@ export default function CoursesPage() {
                     <button
                       key={p}
                       onClick={() => updateQuery({ page: p })}
-                      className={`w-10 h-10 rounded-full font-bold text-sm transition-all ${
+                      className={`h-10 w-10 rounded-full text-sm font-bold transition-all ${
                         queryState.page === p
-                          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
-                          : "hover:bg-slate-100 text-slate-600"
+                          ? "bg-teal-600 text-white shadow-lg shadow-teal-200"
+                          : "text-slate-600 hover:bg-slate-100"
                       }`}
                     >
                       {p}
@@ -310,7 +312,7 @@ export default function CoursesPage() {
             <button
               disabled={queryState.page === totalPages}
               onClick={() => updateQuery({ page: queryState.page + 1 })}
-              className="p-3 rounded-full hover:bg-slate-100 disabled:opacity-20 transition-colors"
+              className="rounded-full p-3 transition-colors hover:bg-slate-100 disabled:opacity-20"
             >
               <ChevronRight size={24} />
             </button>
@@ -320,7 +322,7 @@ export default function CoursesPage() {
 
       {/* Background Fetching Indicator */}
       {isFetching && !isLoading && (
-        <div className="fixed bottom-8 right-8 bg-slate-900 text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-3 z-50 animate-pulse">
+        <div className="fixed bottom-8 right-8 z-50 flex animate-pulse items-center gap-3 rounded-full bg-slate-900 px-5 py-3 text-white shadow-2xl">
           <Loader2 className="animate-spin" size={16} />
           <span className="text-xs font-black uppercase tracking-widest">
             Updating...
@@ -341,6 +343,8 @@ const MemoCourseCard = memo(function CourseCard({
   router: ReturnType<typeof useRouter>;
   priority: boolean;
 }) {
+  const navigateToCourse = () => router.push(`/courses/${course.id}`);
+
   return (
     <motion.article
       layout
@@ -348,36 +352,44 @@ const MemoCourseCard = memo(function CourseCard({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       whileHover={{ y: -6 }}
-      onClick={() => router.push(`/courses/${course.id}`)}
-      className="group cursor-pointer flex flex-col h-full"
+      onClick={navigateToCourse}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigateToCourse();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className="group flex h-full cursor-pointer flex-col rounded-xl outline-none transition-shadow focus-visible:ring-4 focus-visible:ring-teal-600/20"
     >
-      <div className="aspect-video relative rounded-lg overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
+      <div className="relative aspect-video overflow-hidden rounded-lg border border-slate-100 bg-slate-100 shadow-sm">
         {course.thumbnail ? (
           <Image
             src={course.thumbnail}
-            alt=""
+            alt={course.title}
             fill
             priority={priority}
             sizes="(max-width:768px) 100vw, 25vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-slate-300">
+          <div className="flex h-full w-full items-center justify-center text-slate-300">
             <BookOpen size={40} />
           </div>
         )}
       </div>
 
-      <div className="mt-4 flex flex-col flex-grow">
-        <h3 className="text-lg font-bold text-slate-900 leading-tight line-clamp-2 h-12 group-hover:text-indigo-600 transition-colors">
+      <div className="mt-4 flex flex-grow flex-col">
+        <h3 className="h-12 line-clamp-2 text-lg font-bold leading-tight text-slate-900 transition-colors group-hover:text-teal-600">
           {course.title}
         </h3>
 
-        <p className="text-xs text-slate-500 mt-1 mb-2 font-medium">
+        <p className="mb-2 mt-1 text-xs font-medium text-slate-500">
           {course.instructor.name}
         </p>
 
-        <div className="flex items-center gap-1.5 mb-3">
+        <div className="mb-3 flex items-center gap-1.5">
           <span className="text-sm font-black text-amber-800">
             {course.averageRating.toFixed(1)}
           </span>
@@ -392,16 +404,16 @@ const MemoCourseCard = memo(function CourseCard({
               />
             ))}
           </div>
-          <span className="text-xs text-slate-400 font-bold">
+          <span className="text-xs font-bold text-slate-400">
             ({course.totalReviews.toLocaleString()})
           </span>
         </div>
 
-        <div className="mt-auto pt-3 border-t border-slate-50 flex items-center justify-between">
+        <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
           <span className="text-xl font-black text-slate-900">
             {course.price === 0 ? "Free" : `$${course.price.toFixed(2)}`}
           </span>
-          <div className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+          <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-tighter text-slate-400">
             <Users size={12} />
             {course.enrollmentsCount.toLocaleString()}
           </div>
@@ -413,10 +425,10 @@ const MemoCourseCard = memo(function CourseCard({
 
 // Loading placeholder component
 const Skeleton = () => (
-  <div className="flex flex-col h-full">
-    <div className="aspect-video bg-slate-200 rounded-lg mb-4 animate-pulse" />
-    <div className="h-5 bg-slate-200 rounded w-full mb-2 animate-pulse" />
-    <div className="h-5 bg-slate-200 rounded w-2/3 mb-4 animate-pulse" />
-    <div className="h-10 bg-slate-100 rounded w-full mt-auto animate-pulse" />
+  <div className="flex h-full flex-col">
+    <div className="mb-4 aspect-video animate-pulse rounded-lg bg-slate-200" />
+    <div className="mb-2 h-5 w-full animate-pulse rounded bg-slate-200" />
+    <div className="mb-4 h-5 w-2/3 animate-pulse rounded bg-slate-200" />
+    <div className="mt-auto h-10 w-full animate-pulse rounded bg-slate-100" />
   </div>
 );

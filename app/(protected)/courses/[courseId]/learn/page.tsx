@@ -20,7 +20,6 @@ import {
 
 /**
  * TYPES & INTERFACES
- * Defines the core structure for the learning experience
  */
 type Lesson = { id: string; title: string };
 type Section = { id: string; title: string; lessons: Lesson[] };
@@ -32,6 +31,21 @@ type LessonDetail = {
   videoUrl: string | null;
   resources?: string | null;
 };
+
+interface CourseResponse {
+  data: Course;
+}
+
+interface LessonResponse {
+  data: LessonDetail;
+}
+
+interface ProgressResponse {
+  data: {
+    completedLessonIds: string[];
+    progressPercentage: number;
+  };
+}
 
 export default function LearnPage({
   params,
@@ -47,12 +61,16 @@ export default function LearnPage({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // FETCH COURSE STRUCTURE
-  const { data: courseData, isLoading: courseLoading } = useQuery({
+  const { 
+    data: courseData, 
+    isLoading: courseLoading,
+    isError: isCourseError
+  } = useQuery<CourseResponse>({
     queryKey: ["course", courseId],
     queryFn: () => getCourseById(courseId),
   });
 
-  const course: Course | undefined = courseData?.data;
+  const course = courseData?.data;
 
   // FLATTEN LESSONS FOR NAVIGATION
   const allLessons = useMemo(() => {
@@ -66,7 +84,11 @@ export default function LearnPage({
   const prevLesson = allLessons[currentIndex - 1];
 
   // FETCH ACTIVE LESSON DETAILS
-  const { data: lessonData, isLoading: lessonLoading } = useQuery({
+  const { 
+    data: lessonData, 
+    isLoading: lessonLoading,
+    isError: isLessonError
+  } = useQuery<LessonResponse>({
     queryKey: ["lesson", activeLessonId],
     queryFn: async () => {
       const res = await axios.get(`/api/lesson/${activeLessonId}`);
@@ -75,10 +97,10 @@ export default function LearnPage({
     enabled: !!activeLessonId,
   });
 
-  const lesson: LessonDetail | undefined = lessonData?.data;
+  const lesson = lessonData?.data;
 
   // FETCH & MANAGE PROGRESS
-  const { data: progressData } = useQuery({
+  const { data: progressData } = useQuery<ProgressResponse>({
     queryKey: ["progress", courseId],
     queryFn: async () => {
       const res = await axios.get(`/api/courses/${courseId}/progress`);
@@ -92,6 +114,8 @@ export default function LearnPage({
     [progress],
   );
 
+  const isCurrentLessonCompleted = Boolean(activeLessonId && completedIds.includes(activeLessonId));
+
   // MUTATION: MARK LESSON AS COMPLETE
   const { mutate: markComplete, isPending: isMarkingComplete } = useMutation({
     mutationFn: async () => {
@@ -102,6 +126,12 @@ export default function LearnPage({
       queryClient.invalidateQueries({ queryKey: ["progress", courseId] });
     },
   });
+
+  const handleMarkComplete = () => {
+    if (!isMarkingComplete && !isCurrentLessonCompleted) {
+      markComplete();
+    }
+  };
 
   // AUTO-RESUME LOGIC
   useEffect(() => {
@@ -121,22 +151,39 @@ export default function LearnPage({
     }
   }, [course, progress, lessonId, allLessons, completedIds, courseId, router]);
 
+  // FULL PAGE LOADING STATE
   if (courseLoading) {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center gap-4 bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-        <p className="text-slate-500 font-medium">Initializing classroom...</p>
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-slate-50">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+        <p className="font-medium text-slate-500">Initializing classroom...</p>
+      </div>
+    );
+  }
+
+  // FULL PAGE ERROR STATE
+  if (isCourseError || !course) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-slate-50 px-6 text-center">
+        <p className="text-lg font-bold text-rose-600">Failed to load course structure.</p>
+        <button
+          onClick={() => router.push("/courses")}
+          className="font-bold text-teal-600 transition-colors hover:text-teal-700"
+        >
+          Return to courses
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-[#fcfcfd] overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-slate-50">
       {/* MOBILE OVERLAY */}
       {!isSidebarOpen && (
         <button
+          aria-label="Open course navigation"
           onClick={() => setIsSidebarOpen(true)}
-          className="lg:hidden fixed bottom-6 right-6 z-50 p-4 bg-indigo-600 text-white rounded-full shadow-xl"
+          className="fixed bottom-6 right-6 z-50 rounded-full bg-teal-600 p-4 text-white shadow-xl lg:hidden"
         >
           <Menu size={24} />
         </button>
@@ -145,29 +192,30 @@ export default function LearnPage({
       {/* SIDEBAR: COURSE CONTENT */}
       <aside
         className={`
-        fixed inset-y-0 left-0 z-40 w-80 bg-white border-r shadow-xl transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
+        fixed inset-y-0 left-0 z-40 w-80 transform border-r bg-white shadow-xl transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
       >
-        <div className="h-full flex flex-col">
+        <div className="flex h-full flex-col">
           {/* Sidebar Header */}
-          <div className="p-6 border-b bg-slate-50/50">
-            <div className="flex items-center justify-between mb-4">
+          <div className="border-b bg-slate-50/50 p-6">
+            <div className="mb-4 flex items-center justify-between">
               <Link
                 href={`/courses/${courseId}`}
-                className="text-slate-400 hover:text-slate-900 transition-colors"
+                className="text-slate-400 transition-colors hover:text-slate-900"
               >
                 <ArrowLeft size={20} />
               </Link>
               <button
+                aria-label="Close course navigation"
                 onClick={() => setIsSidebarOpen(false)}
-                className="lg:hidden p-1 hover:bg-slate-200 rounded"
+                className="rounded p-1 hover:bg-slate-200 lg:hidden"
               >
                 <X size={20} />
               </button>
             </div>
-            <h2 className="font-black text-slate-900 leading-tight mb-4">
-              {course?.title}
+            <h2 className="mb-4 font-black leading-tight text-slate-900">
+              {course.title}
             </h2>
 
             {/* Progress Bar */}
@@ -175,13 +223,13 @@ export default function LearnPage({
               <div className="space-y-2">
                 <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-slate-400">
                   <span>Course Progress</span>
-                  <span className="text-indigo-600">
+                  <span className="text-teal-600">
                     {progress.progressPercentage}%
                   </span>
                 </div>
-                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div className="h-2 overflow-hidden rounded-full bg-slate-200">
                   <div
-                    className="h-full bg-indigo-600 transition-all duration-500 ease-out"
+                    className="h-full bg-teal-600 transition-all duration-500 ease-out"
                     style={{ width: `${progress.progressPercentage}%` }}
                   />
                 </div>
@@ -190,10 +238,10 @@ export default function LearnPage({
           </div>
 
           {/* Sidebar Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-            {course?.sections.map((section, sIdx) => (
+          <div className="custom-scrollbar flex-1 overflow-y-auto p-4 space-y-6">
+            {course.sections.map((section, sIdx) => (
               <div key={section.id}>
-                <h3 className="text-[10px] uppercase text-slate-400 font-black tracking-widest mb-3 px-2">
+                <h3 className="mb-3 px-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                   Section {sIdx + 1}: {section.title}
                 </h3>
 
@@ -206,9 +254,9 @@ export default function LearnPage({
                       <Link
                         key={l.id}
                         href={`/courses/${courseId}/learn?lessonId=${l.id}`}
-                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                           isActive
-                            ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100"
+                            ? "bg-teal-50 text-teal-700 ring-1 ring-teal-100"
                             : "text-slate-600 hover:bg-slate-50"
                         }`}
                       >
@@ -221,10 +269,10 @@ export default function LearnPage({
                           ) : isActive ? (
                             <PlayCircle
                               size={18}
-                              className="text-indigo-600 animate-pulse"
+                              className="animate-pulse text-teal-600"
                             />
                           ) : (
-                            <div className="w-[18px] h-[18px] rounded-full border-2 border-slate-200" />
+                            <div className="h-[18px] w-[18px] rounded-full border-2 border-slate-200" />
                           )}
                         </div>
                         <span className="truncate">{l.title}</span>
@@ -239,19 +287,20 @@ export default function LearnPage({
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col h-full relative overflow-hidden">
+      <main className="relative flex h-full flex-1 flex-col overflow-hidden">
         {/* TOP NAVIGATION BAR */}
-        <header className="h-16 px-8 bg-white/80 backdrop-blur-md border-b flex justify-between items-center z-30">
+        <header className="z-30 flex h-16 items-center justify-between border-b bg-white/80 px-8 backdrop-blur-md">
           <div className="flex items-center gap-4">
             {!isSidebarOpen && (
               <button
+                aria-label="Open course navigation"
                 onClick={() => setIsSidebarOpen(true)}
-                className="hidden lg:block p-2 hover:bg-slate-100 rounded-lg"
+                className="hidden rounded-lg p-2 hover:bg-slate-100 lg:block"
               >
                 <Menu size={20} />
               </button>
             )}
-            <h1 className="font-bold text-slate-800 truncate max-w-md">
+            <h1 className="max-w-md truncate font-bold text-slate-800">
               {lessonLoading ? "Loading lesson..." : lesson?.title}
             </h1>
           </div>
@@ -259,40 +308,43 @@ export default function LearnPage({
           <div className="flex items-center gap-2">
             <button
               disabled={isMarkingComplete}
-              onClick={() => markComplete()}
-              className={`hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
-                completedIds.includes(activeLessonId as string)
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-600"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-indigo-600 hover:text-indigo-600"
+              onClick={handleMarkComplete}
+              className={`hidden items-center gap-2 rounded-lg border px-4 py-2 text-xs font-bold transition-all sm:flex ${
+                isCurrentLessonCompleted
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-teal-600 hover:text-teal-600"
               }`}
             >
-              {completedIds.includes(activeLessonId as string)
-                ? "Completed"
-                : "Mark as complete"}
+              {isCurrentLessonCompleted ? "Completed" : "Mark as complete"}
             </button>
           </div>
         </header>
 
         {/* LEARNING CONTENT AREA */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <div className="max-w-5xl mx-auto p-8">
+        <div className="custom-scrollbar flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-5xl p-8">
             {/* VIDEO PLAYER CONTAINER */}
-            <div className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl bg-slate-900 group">
-              {lessonLoading ? (
+            <div className="group relative aspect-video overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
+              {isLessonError ? (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
+                  <p className="font-bold text-rose-500">Failed to load video content.</p>
+                </div>
+              ) : lessonLoading ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="h-10 w-10 animate-spin text-teal-500" />
                 </div>
               ) : lesson?.videoUrl ? (
                 <video
                   key={lesson.videoUrl} // Reset player on source change
                   src={lesson.videoUrl}
                   controls
-                  onEnded={() => markComplete()}
-                  className="w-full h-full object-contain"
+                  aria-label={lesson.title || "Lesson video"}
+                  onEnded={handleMarkComplete}
+                  className="h-full w-full object-contain"
                   controlsList="nodownload"
                 />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-4">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-slate-400">
                   <PlayCircle size={64} className="opacity-20" />
                   <p className="font-bold">No video content for this lesson</p>
                 </div>
@@ -300,14 +352,14 @@ export default function LearnPage({
             </div>
 
             {/* LESSON DETAILS */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-                  <h2 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2">
-                    <CheckCircle2 size={24} className="text-indigo-600" />
+            <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
+              <div className="space-y-6 lg:col-span-2">
+                <div className="rounded-2xl border border-slate-100 bg-white p-8 shadow-sm">
+                  <h2 className="mb-4 flex items-center gap-2 text-xl font-black text-slate-900">
+                    <CheckCircle2 size={24} className="text-teal-600" />
                     About this lesson
                   </h2>
-                  <p className="text-slate-600 leading-relaxed">
+                  <p className="leading-relaxed text-slate-600">
                     {lesson?.description ||
                       "No description provided for this lesson."}
                   </p>
@@ -317,12 +369,12 @@ export default function LearnPage({
               {/* RESOURCES PANEL */}
               <div className="space-y-6">
                 {lesson?.resources && (
-                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                    <h2 className="font-black text-slate-900 mb-4 flex items-center gap-2 text-sm uppercase tracking-widest">
-                      <FileText size={18} className="text-indigo-600" />
+                  <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+                    <h2 className="mb-4 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-slate-900">
+                      <FileText size={18} className="text-teal-600" />
                       Resources
                     </h2>
-                    <div className="text-slate-600 text-sm prose prose-slate">
+                    <div className="prose prose-slate text-sm text-slate-600">
                       {lesson.resources}
                     </div>
                   </div>
@@ -331,20 +383,20 @@ export default function LearnPage({
             </div>
 
             {/* FOOTER NAVIGATION */}
-            <footer className="flex justify-between items-center mt-12 py-8 border-t border-slate-200">
+            <footer className="mt-12 flex items-center justify-between border-t border-slate-200 py-8">
               {prevLesson ? (
                 <Link
                   href={`/courses/${courseId}/learn?lessonId=${prevLesson.id}`}
-                  className="group flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition-all"
+                  className="group flex items-center gap-2 font-bold text-slate-500 transition-all hover:text-teal-600"
                 >
-                  <div className="p-2 rounded-full group-hover:bg-indigo-50 transition-colors">
+                  <div className="rounded-full p-2 transition-colors group-hover:bg-teal-50">
                     <ChevronLeft size={24} />
                   </div>
                   <div className="flex flex-col items-start">
                     <span className="text-[10px] uppercase tracking-tighter opacity-60">
                       Back
                     </span>
-                    <span className="text-sm hidden md:block">
+                    <span className="hidden text-sm md:block">
                       {prevLesson.title}
                     </span>
                   </div>
@@ -356,32 +408,32 @@ export default function LearnPage({
               {nextLesson ? (
                 <button
                   onClick={() => {
-                    markComplete();
+                    handleMarkComplete();
                     router.push(
                       `/courses/${courseId}/learn?lessonId=${nextLesson.id}`,
                     );
                   }}
-                  className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white pl-6 pr-2 py-2 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-100"
+                  className="group flex items-center gap-2 rounded-2xl bg-teal-600 py-2 pl-6 pr-2 font-bold text-white shadow-lg shadow-teal-100 transition-all hover:bg-teal-700"
                 >
                   <div className="flex flex-col items-end">
-                    <span className="text-[10px] uppercase tracking-tighter opacity-80 text-indigo-100">
+                    <span className="text-[10px] uppercase tracking-tighter text-teal-100 opacity-80">
                       Next Lesson
                     </span>
-                    <span className="text-sm hidden md:block">
+                    <span className="hidden text-sm md:block">
                       {nextLesson.title}
                     </span>
                   </div>
-                  <div className="p-2 bg-white/20 rounded-xl">
+                  <div className="rounded-xl bg-white/20 p-2">
                     <ChevronRight size={24} />
                   </div>
                 </button>
               ) : (
                 <button
                   onClick={() => {
-                    markComplete();
+                    handleMarkComplete();
                     router.push(`/courses/${courseId}/completed`);
                   }}
-                  className="flex items-center gap-2 bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-emerald-100 transition-all hover:bg-emerald-700"
+                  className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-8 py-4 font-black text-white shadow-lg shadow-emerald-100 transition-all hover:bg-emerald-700"
                 >
                   Complete Course
                   <CheckCircle2 size={20} />

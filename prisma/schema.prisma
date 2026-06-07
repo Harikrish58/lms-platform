@@ -8,15 +8,26 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid()) // Primary key
-  name      String
-  email     String   @unique // No duplicate users
-  password  String
-  role      Role     @default(STUDENT)
-  avatarUrl String? // Optional profile picture URL
+  id       String @id @default(uuid()) // Primary key
+  name     String
+  email    String @unique // No duplicate users
+  password String
+
+  role Role @default(STUDENT)
+
+  avatarUrl      String? // Optional profile picture URL
+  avatarPublicId String? // For deletion if using Cloudinary
+
+  bio      String? // Optional user bio
+  headline String? // Optional headline for instructor profile
+
+  isVerified Boolean @default(false) // Email verification status
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   // Relations (virtual fields, NOT stored in DB)
+  preferences UserPreference? // One-to-one relation for user settings
   courses     Course[]     @relation("InstructorCourses") // Courses created by this user (as instructor)
   enrollments Enrollment[] // Courses this user joined
   reviews     Review[] // Reviews written by user
@@ -24,17 +35,35 @@ model User {
   payments    Payment[] // Payment tracking
 }
 
+model UserPreference {
+  id String @id @default(uuid())
+
+  userId String @unique
+
+  courseUpdates Boolean @default(true)
+  lessonNotifications Boolean @default(true)
+  announcements Boolean @default(true)
+
+  marketingEmails Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model Course {
-  id          String   @id @default(uuid()) // Primary key
-  title       String
-  description String
-  price       Float
-  
-  thumbnail   String? // Stored thumbnail location
+  id              String @id @default(uuid()) // Primary key
+  title           String
+  description     String
+  price           Float
+  durationMinutes Int    @default(0) // Total duration of all lessons in minutes
+
+  thumbnail         String? // Stored thumbnail location
   thumbnailPublicId String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   // Foreign Key (stored in DB)
   instructorId String // References User.id
@@ -94,7 +123,8 @@ model Lesson {
 }
 
 model Enrollment {
-  id String @id @default(uuid()) // Primary key
+  id          String  @id @default(uuid()) // Primary key
+  isComplete Boolean @default(false) // Whether the user has completed the course
 
   // Foreign Keys
   userId   String // References User.id

@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 import {
   PlayCircle,
   ChevronDown,
@@ -62,17 +62,25 @@ interface CourseResponse {
   data: CourseWithContent;
 }
 
+interface ApiErrorResponse {
+  message?: string;
+}
+
 // Professional Course Detail Page with synchronized backend data and dynamic UI states
 export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const courseId = params.courseId as string;
+  
+  // Safe extraction of params
+  const courseId = Array.isArray(params.courseId) 
+    ? params.courseId[0] 
+    : params.courseId || "";
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [isEnrolling, setIsEnrolling] = useState(false);
 
   // Fetch course data using TanStack Query for high-performance caching
-  const { data, isLoading, isError } = useQuery<CourseResponse>({
+  const { data, isLoading, isError, error } = useQuery<CourseResponse>({
     queryKey: ["course", courseId],
     queryFn: () => getCourseById(courseId),
     enabled: !!courseId,
@@ -142,33 +150,37 @@ export default function CourseDetailPage() {
       }
     } catch (err: unknown) {
       const message =
-        err instanceof AxiosError
+        isAxiosError<ApiErrorResponse>(err)
           ? err.response?.data?.message
           : "Connection error";
-      toast.error(message);
+      toast.error(message || "An unexpected error occurred");
     } finally {
       setIsEnrolling(false);
     }
   };
 
   if (isLoading) return <SkeletonLoader />;
-  if (isError || !data?.data) return <ErrorState />;
+  if (isError || !data?.data) {
+    // Log error for observability in development/monitoring
+    if (error) console.error("Failed to load course details:", error);
+    return <ErrorState />;
+  }
 
   const course = data.data;
 
   return (
     <div className="min-h-screen bg-white">
       {/* Dark Theme Hero Banner */}
-      <div className="bg-[#1c1d1f] text-white py-12">
+      <div className="bg-slate-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
-            <nav className="flex gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider mb-4">
+            <nav className="flex gap-2 text-teal-400 font-bold text-xs uppercase tracking-wider mb-4">
               <span>Courses</span> &gt; <span>Development</span>
             </nav>
             <h1 className="text-4xl font-bold mb-4 leading-tight">
               {course.title}
             </h1>
-            <p className="text-xl text-gray-300 mb-8 line-clamp-3">
+            <p className="text-xl text-slate-300 mb-8 line-clamp-3">
               {course.description}
             </p>
 
@@ -191,25 +203,33 @@ export default function CourseDetailPage() {
                   ))}
                 </div>
               </div>
-              <span className="text-indigo-300 underline font-medium">
+              <span className="text-teal-300 underline font-medium">
                 ({course.totalReviews.toLocaleString()} ratings)
               </span>
-              <span className="text-gray-300 font-medium">
+              <span className="text-slate-300 font-medium">
                 {course._count.enrollments.toLocaleString()} students
               </span>
             </div>
 
             <div className="mt-6 flex items-center gap-3 text-sm">
-              <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold">
-                {course.instructor.name.charAt(0)}
+              <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold overflow-hidden">
+                {course.instructor.avatarUrl ? (
+                  <img 
+                    src={course.instructor.avatarUrl} 
+                    alt={course.instructor.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  course.instructor.name?.charAt(0) || "U"
+                )}
               </div>
               <span>
                 Created by{" "}
-                <span className="text-indigo-300 underline font-bold">
+                <span className="text-teal-300 underline font-bold">
                   {course.instructor.name}
                 </span>
               </span>
-              <span className="flex items-center gap-1 ml-4">
+              <span className="flex items-center gap-1 ml-4 text-slate-300">
                 <Globe size={14} /> English [Auto]
               </span>
             </div>
@@ -226,6 +246,7 @@ export default function CourseDetailPage() {
                 What you&apos;ll learn
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Note: In the future, these learning outcomes should be fetched dynamically from the backend */}
                 {[
                   "Master core principles",
                   "Real-world project builds",
@@ -259,7 +280,7 @@ export default function CourseDetailPage() {
                     course.sections.forEach((s) => (newState[s.id] = !allOpen));
                     setOpenSections(newState);
                   }}
-                  className="text-indigo-600 hover:text-indigo-800 transition-colors"
+                  className="text-teal-600 hover:text-teal-800 transition-colors"
                 >
                   {Object.values(openSections).every((v) => v)
                     ? "Collapse all"
@@ -273,6 +294,7 @@ export default function CourseDetailPage() {
                   <div key={section.id} className="border-b last:border-none">
                     <button
                       onClick={() => toggleSection(section.id)}
+                      aria-expanded={openSections[section.id]}
                       className="w-full flex items-center justify-between px-5 py-4 bg-slate-50/50 hover:bg-slate-100/80 transition-colors"
                     >
                       <div className="flex items-center gap-4">
@@ -300,14 +322,14 @@ export default function CourseDetailPage() {
                             <div className="flex items-center gap-4">
                               <PlayCircle
                                 size={16}
-                                className="text-slate-300 group-hover:text-indigo-600"
+                                className="text-slate-300 group-hover:text-teal-600"
                               />
                               <span className="text-slate-600 font-medium">
                                 {lesson.title}
                               </span>
                             </div>
                             {idx === 0 && section.order === 1 ? (
-                              <span className="text-indigo-600 font-black underline text-xs cursor-pointer">
+                              <span className="text-teal-600 font-black underline text-xs cursor-pointer">
                                 Preview
                               </span>
                             ) : (
@@ -343,7 +365,7 @@ export default function CourseDetailPage() {
                   />
                 ) : (
                   <div className="bg-slate-900 w-full h-full flex items-center justify-center">
-                    <PlayCircle size={48} className="text-indigo-500" />
+                    <PlayCircle size={48} className="text-teal-500" />
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px]">
@@ -372,7 +394,7 @@ export default function CourseDetailPage() {
                   <button
                     onClick={handleEnroll}
                     disabled={isEnrolling}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl shadow-lg shadow-indigo-100 transition-all disabled:opacity-50 active:scale-[0.97]"
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white font-black py-4 rounded-xl shadow-lg shadow-teal-100 transition-all disabled:opacity-50 active:scale-[0.97]"
                   >
                     {isEnrolling ? "Processing..." : "Buy now"}
                   </button>
@@ -396,7 +418,7 @@ export default function CourseDetailPage() {
                     </li>
                     {stats.hasResources && (
                       <li className="flex items-center gap-4">
-                        <FileText size={18} className="text-indigo-500" />{" "}
+                        <FileText size={18} className="text-teal-500" />{" "}
                         Downloadable PDF resources
                       </li>
                     )}
@@ -425,7 +447,7 @@ function SkeletonLoader() {
           <div className="h-20 bg-slate-100 rounded-xl w-full" />
           <div className="h-40 bg-slate-100 rounded-xl w-full" />
         </div>
-        <div className="h-125 bg-slate-100 rounded-2xl w-full" />
+        <div className="h-[500px] bg-slate-100 rounded-2xl w-full" />
       </div>
     </div>
   );
@@ -434,7 +456,7 @@ function SkeletonLoader() {
 function ErrorState() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center px-6">
-      <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
+      <div className="w-20 h-20 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-6">
         <ShieldCheck size={40} />
       </div>
       <h2 className="text-3xl font-black text-slate-900 mb-4">
@@ -446,7 +468,7 @@ function ErrorState() {
       </p>
       <button
         onClick={() => window.location.reload()}
-        className="bg-slate-900 text-white px-10 py-4 rounded-xl font-black shadow-xl"
+        className="bg-slate-900 text-white px-10 py-4 rounded-xl font-black shadow-xl hover:bg-slate-800 transition-colors"
       >
         Retry Connection
       </button>

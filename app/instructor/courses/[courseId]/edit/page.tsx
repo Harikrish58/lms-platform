@@ -22,7 +22,7 @@ import { AxiosError } from "axios";
 import ImageUpload from "@/components/ui/ImageUpload";
 import CurriculumBuilder from "@/components/courses/CurriculumBuilder";
 
-// --- Strict TypeScript Interfaces ---
+// Strict TypeScript Interfaces
 interface LessonData {
   id: string;
   title: string;
@@ -59,19 +59,28 @@ interface ApiErrorResponse {
 export default function EditCoursePage() {
   const router = useRouter();
   const params = useParams();
-  const courseId = params.courseId as string;
+
+  // Defensive type checking for dynamic route params
+  const courseId = typeof params.courseId === "string" ? params.courseId : "";
   const queryClient = useQueryClient();
 
   // 1. Fetch Existing Course Data
-  // 1. Fetch Existing Course Data
-  const { data: course, isLoading } = useQuery<CourseData>({
+  const {
+    data: course,
+    isLoading,
+    isError,
+  } = useQuery<CourseData>({
     queryKey: ["course", courseId],
     queryFn: async () => {
       const response = await axiosInstance.get(
         `/api/instructor/courses/${courseId}`,
       );
-      return response.data.data;
+      const courseData: CourseData = response.data.data;
+      return courseData;
     },
+    retry: 1,
+    refetchOnWindowFocus: false,
+    enabled: !!courseId, // Prevent fetching if courseId is somehow empty
   });
 
   // 2. Initialize Form
@@ -83,16 +92,36 @@ export default function EditCoursePage() {
     },
   });
 
-  // Hydrate form when course data loads
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty },
+    reset,
+  } = form;
+
+  // Hydrate form when course data loads or updates
   useEffect(() => {
     if (course) {
-      form.reset({
+      reset({
         title: course.title || "",
         description: course.description || "",
         price: course.price || 0,
       });
     }
-  }, [course, form]);
+  }, [course, reset]);
+
+  // Unsaved Changes Warning
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
 
   // 3. Update Mutations
   const updateCourseMutation = useMutation({
@@ -103,9 +132,12 @@ export default function EditCoursePage() {
       );
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Course updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["course", courseId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["course", courseId] }),
+        queryClient.invalidateQueries({ queryKey: ["instructor-courses"] }),
+      ]);
     },
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(error.response?.data?.message || "Failed to update course");
@@ -119,10 +151,12 @@ export default function EditCoursePage() {
       );
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["course", courseId] });
-      queryClient.invalidateQueries({ queryKey: ["instructor-courses"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["course", courseId] }),
+        queryClient.invalidateQueries({ queryKey: ["instructor-courses"] }),
+      ]);
     },
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toast.error(
@@ -131,20 +165,48 @@ export default function EditCoursePage() {
     },
   });
 
-  if (isLoading || !course) {
+  // Distinct Loading and Error States
+  if (isLoading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+        <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
+      </div>
+    );
+  }
+
+  if (isError || !course) {
+    return (
+      <div className="flex flex-col h-[80vh] items-center justify-center gap-4 text-center">
+        <AlertTriangle className="h-12 w-12 text-rose-500" />
+        <h2 className="text-xl font-bold text-slate-800">
+          Unable to Load Course
+        </h2>
+        <p className="text-slate-500 max-w-md">
+          We couldn&apos;t retrieve this course. It may have been deleted,
+          moved, or you may not have permission to access it.
+        </p>
+        <button
+          type="button"
+          onClick={() => router.push("/instructor/courses")}
+          className="mt-2 px-6 py-2 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-colors"
+        >
+          Back to Dashboard
+        </button>
       </div>
     );
   }
 
   // Publish Validation Logic
-  const hasSections = course.sections && course.sections.length > 0;
-  const hasLessons =
-    course.sections && course.sections.some((s) => s.lessons.length > 0);
+  const hasSections = course.sections.length > 0;
+  const hasLessons = course.sections.some((s) => s.lessons.length > 0);
+  const hasThumbnail = Boolean(course.thumbnail);
+
   const isReadyToPublish =
-    course.title && course.description && hasSections && hasLessons;
+    course.title.trim().length > 0 &&
+    course.description.trim().length > 0 &&
+    hasThumbnail &&
+    hasSections &&
+    hasLessons;
 
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-10 min-h-screen pb-24">
@@ -152,8 +214,9 @@ export default function EditCoursePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
           <button
+            type="button"
             onClick={() => router.push("/instructor/courses")}
-            className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 font-bold mb-4 transition-colors w-fit"
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-teal-600 font-bold mb-4 transition-colors w-fit"
           >
             <ArrowLeft size={16} /> Back to Dashboard
           </button>
@@ -183,14 +246,14 @@ export default function EditCoursePage() {
           {/* General Details Form */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-4 mb-6">
-              <LayoutDashboard className="text-indigo-600" size={24} />
+              <LayoutDashboard className="text-teal-600" size={24} />
               <h2 className="text-xl font-bold text-slate-800">
                 General Details
               </h2>
             </div>
 
             <form
-              onSubmit={form.handleSubmit((data) =>
+              onSubmit={handleSubmit((data) =>
                 updateCourseMutation.mutate({
                   ...data,
                   price: Number(data.price),
@@ -203,9 +266,20 @@ export default function EditCoursePage() {
                   Course Title
                 </label>
                 <input
-                  {...form.register("title", { required: true, minLength: 5 })}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  {...register("title", {
+                    required: "Course title is required.",
+                    minLength: {
+                      value: 5,
+                      message: "Title must be at least 5 characters.",
+                    },
+                  })}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
                 />
+                {errors.title && (
+                  <p className="text-rose-500 text-xs font-medium mt-1.5">
+                    {errors.title.message}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -213,13 +287,21 @@ export default function EditCoursePage() {
                   Description
                 </label>
                 <textarea
-                  {...form.register("description", {
-                    required: true,
-                    minLength: 10,
+                  {...register("description", {
+                    required: "Course description is required.",
+                    minLength: {
+                      value: 10,
+                      message: "Description must be at least 10 characters.",
+                    },
                   })}
                   rows={4}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all resize-none"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all resize-none"
                 />
+                {errors.description && (
+                  <p className="text-rose-500 text-xs font-medium mt-1.5">
+                    {errors.description.message}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -229,15 +311,27 @@ export default function EditCoursePage() {
                 <input
                   type="number"
                   step="0.01"
-                  {...form.register("price", { required: true, min: 0 })}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  {...register("price", {
+                    required: "Price is required.",
+                    min: {
+                      value: 0,
+                      message: "Price cannot be negative.",
+                    },
+                  })}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
                 />
+                {errors.price && (
+                  <p className="text-rose-500 text-xs font-medium mt-1.5">
+                    {errors.price.message}
+                  </p>
+                )}
               </div>
 
               <button
                 type="submit"
-                disabled={updateCourseMutation.isPending}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50"
+                aria-busy={updateCourseMutation.isPending}
+                disabled={!isDirty || updateCourseMutation.isPending}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {updateCourseMutation.isPending ? (
                   <Loader2 size={18} className="animate-spin" />
@@ -252,7 +346,7 @@ export default function EditCoursePage() {
           {/* Thumbnail Upload */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-4 mb-6">
-              <ImageIcon className="text-indigo-600" size={24} />
+              <ImageIcon className="text-teal-600" size={24} />
               <h2 className="text-xl font-bold text-slate-800">
                 Course Thumbnail
               </h2>
@@ -274,7 +368,7 @@ export default function EditCoursePage() {
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
               <div className="flex items-center gap-2">
-                <ListChecks className="text-indigo-600" size={24} />
+                <ListChecks className="text-teal-600" size={24} />
                 <h2 className="text-xl font-bold text-slate-800">Curriculum</h2>
               </div>
             </div>
@@ -302,16 +396,20 @@ export default function EditCoursePage() {
           </p>
 
           {!isReadyToPublish && !course.isPublished && (
-            <div className="mt-3 flex items-center gap-2 text-amber-600 text-sm font-bold bg-amber-50 p-3 rounded-lg border border-amber-100">
-              <AlertTriangle size={16} />
-              You must add a description and at least one lesson before
-              publishing.
+            <div className="mt-3 flex items-start gap-2 text-amber-700 text-sm font-bold bg-amber-50 p-3.5 rounded-xl border border-amber-200">
+              <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+              <span>
+                Please complete the title, description, thumbnail, and add at
+                least one section with a lesson before publishing.
+              </span>
             </div>
           )}
         </div>
 
         <button
+          type="button"
           onClick={() => togglePublishMutation.mutate()}
+          aria-busy={togglePublishMutation.isPending}
           disabled={
             (!isReadyToPublish && !course.isPublished) ||
             togglePublishMutation.isPending
@@ -319,7 +417,7 @@ export default function EditCoursePage() {
           className={`px-8 py-3.5 rounded-xl font-black text-base flex items-center justify-center gap-2 transition-all min-w-[200px] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
             course.isPublished
               ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              : "bg-indigo-600 text-white hover:bg-indigo-700"
+              : "bg-teal-600 text-white hover:bg-teal-700"
           }`}
         >
           {togglePublishMutation.isPending ? (

@@ -25,6 +25,14 @@ export async function GET() {
         email: true,
         role: true,
         avatarUrl: true,
+
+        bio: true,
+        headline: true,
+
+        isVerified: true,
+
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -72,7 +80,7 @@ export async function PATCH(request: Request) {
 
     const body = await request.json();
 
-    const { name, avatarUrl } = body;
+    const { name, avatarUrl, bio, headline } = body;
 
     const updatedUser = await prisma.user.update({
       where: {
@@ -81,6 +89,8 @@ export async function PATCH(request: Request) {
       data: {
         name,
         avatarUrl,
+        bio,
+        headline,
       },
       select: {
         id: true,
@@ -88,6 +98,14 @@ export async function PATCH(request: Request) {
         email: true,
         role: true,
         avatarUrl: true,
+
+        bio: true,
+        headline: true,
+
+        isVerified: true,
+
+        createdAt: true,
+        updatedAt: true,
       },
     });
 

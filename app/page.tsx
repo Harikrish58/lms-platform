@@ -10,6 +10,8 @@ import {
   Users,
 } from "lucide-react";
 
+const FEATURED_COURSES_LIMIT = 3;
+
 interface Course {
   id: string;
   title: string;
@@ -23,33 +25,67 @@ interface Course {
   };
 }
 
-export default async function Home() {
+const currencyFormatter = new Intl.NumberFormat("pl-PL", {
+  style: "currency",
+  currency: "PLN",
+});
+
+const formatCurrency = (amount: number): string =>
+  amount === 0 ? "Free" : currencyFormatter.format(amount);
+
+const features = [
+  {
+    icon: BookOpen,
+    title: "Structured Learning Paths",
+    description:
+      "Follow carefully designed learning roadmaps with practical projects, real-world workflows, and production concepts.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Progress Tracking",
+    description:
+      "Continue exactly where you left off with lesson completion tracking, saved progress, and seamless learning continuity.",
+  },
+  {
+    icon: Users,
+    title: "Community Driven",
+    description:
+      "Learn alongside developers worldwide and build industry-ready technical confidence together.",
+  },
+];
+
+export default async function HomePage() {
   let featuredCourses: Course[] = [];
 
   try {
-    const response = await getCourses({ page: 1, limit: 3 });
+    const response = await getCourses({
+      page: 1,
+      limit: FEATURED_COURSES_LIMIT,
+    });
 
-    if (response?.data) {
-      featuredCourses = response.data.slice(0, 3);
+    if (response?.data && Array.isArray(response.data)) {
+      featuredCourses = response.data.slice(0, FEATURED_COURSES_LIMIT);
     }
   } catch (error) {
-    console.error("Failed to fetch featured courses:", error);
+    console.error(
+      "[HomePage] Failed to fetch featured courses",
+      error instanceof Error ? error.message : error
+    );
   }
 
   return (
-    <main className="min-h-screen bg-white overflow-hidden">
+    <div className="min-h-screen bg-white overflow-hidden">
       {/* Hero Section */}
       <section className="relative isolate bg-slate-950 text-white">
-        {/* Background Effects */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 left-1/2 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-indigo-600/20 blur-3xl" />
-          <div className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-purple-600/10 blur-3xl" />
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.15),transparent_40%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:72px_72px]" />
         </div>
 
         <div className="relative max-w-5xl mx-auto px-6 pt-28 pb-24 text-center">
           <div className="space-y-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-indigo-300 backdrop-blur">
-              <Sparkles size={16} />
+              <Sparkles size={16} aria-hidden="true" />
               Trusted by modern developers
             </div>
 
@@ -72,7 +108,7 @@ export default async function Home() {
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-8 py-4 font-bold text-white transition-all hover:bg-indigo-500 hover:scale-[1.02]"
               >
                 Explore Courses
-                <ArrowRight size={18} />
+                <ArrowRight size={18} aria-hidden="true" />
               </Link>
 
               <Link
@@ -119,50 +155,27 @@ export default async function Home() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="group rounded-3xl bg-white border border-slate-200 p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <BookOpen size={24} />
-              </div>
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <div
+                  key={index}
+                  className="group rounded-3xl bg-white border border-slate-200 p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                    <Icon size={24} aria-hidden="true" />
+                  </div>
 
-              <h3 className="mt-6 text-xl font-bold text-slate-900">
-                Structured Learning Paths
-              </h3>
+                  <h3 className="mt-6 text-xl font-bold text-slate-900">
+                    {feature.title}
+                  </h3>
 
-              <p className="mt-3 text-slate-500 leading-relaxed">
-                Follow carefully designed learning roadmaps with practical
-                projects, real-world workflows, and production concepts.
-              </p>
-            </div>
-
-            <div className="group rounded-3xl bg-white border border-slate-200 p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <ShieldCheck size={24} />
-              </div>
-
-              <h3 className="mt-6 text-xl font-bold text-slate-900">
-                Progress Tracking
-              </h3>
-
-              <p className="mt-3 text-slate-500 leading-relaxed">
-                Continue exactly where you left off with lesson completion
-                tracking, saved progress, and seamless learning continuity.
-              </p>
-            </div>
-
-            <div className="group rounded-3xl bg-white border border-slate-200 p-8 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <Users size={24} />
-              </div>
-
-              <h3 className="mt-6 text-xl font-bold text-slate-900">
-                Community Driven
-              </h3>
-
-              <p className="mt-3 text-slate-500 leading-relaxed">
-                Learn alongside developers worldwide and build industry-ready
-                technical confidence together.
-              </p>
-            </div>
+                  <p className="mt-3 text-slate-500 leading-relaxed">
+                    {feature.description}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -187,7 +200,7 @@ export default async function Home() {
                 className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
               >
                 Browse all courses
-                <ArrowRight size={16} />
+                <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </div>
 
@@ -204,19 +217,19 @@ export default async function Home() {
                         src={course.thumbnail}
                         alt={course.title}
                         fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400">
-                        <BookOpen size={42} />
+                        <BookOpen size={42} aria-hidden="true" />
                       </div>
                     )}
                   </div>
 
                   <div className="p-6 flex flex-col h-full">
                     <div className="flex items-center gap-1 text-amber-500 text-sm font-semibold">
-                      <Star size={14} fill="currentColor" />
+                      <Star size={14} fill="currentColor" aria-hidden="true" />
                       <span>{course.averageRating.toFixed(1)}</span>
                       <span className="text-slate-400">
                         ({course.totalReviews} reviews)
@@ -238,9 +251,7 @@ export default async function Home() {
                         </p>
 
                         <p className="text-2xl font-black text-slate-900">
-                          {course.price === 0
-                            ? "Free"
-                            : `$${course.price.toFixed(2)}`}
+                          {formatCurrency(course.price)}
                         </p>
                       </div>
 
@@ -260,8 +271,8 @@ export default async function Home() {
       <section className="px-6 pb-24 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="relative overflow-hidden rounded-[40px] bg-slate-950 px-8 py-20 md:px-16 text-center text-white">
-            <div className="absolute inset-0">
-              <div className="absolute top-0 left-1/2 h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-indigo-600/20 blur-3xl" />
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-0 left-1/2 h-full w-[800px] -translate-x-1/2 bg-[radial-gradient(circle_at_top,rgba(79,70,229,0.15),transparent_70%)]" />
             </div>
 
             <div className="relative max-w-3xl mx-auto">
@@ -281,13 +292,13 @@ export default async function Home() {
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-8 py-4 text-sm font-black text-slate-900 transition-all hover:scale-[1.02]"
                 >
                   Create Free Account
-                  <ArrowRight size={16} />
+                  <ArrowRight size={16} aria-hidden="true" />
                 </Link>
               </div>
             </div>
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
