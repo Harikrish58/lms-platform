@@ -64,6 +64,10 @@ interface LmsUser {
   isVerified: boolean;
 }
 
+interface MeResponse {
+  success: boolean;
+  data: LmsUser;
+}
 interface UserStats {
   enrolledCourses: number;
   completedCourses: number;
@@ -82,13 +86,18 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   const {
-    data: user,
+    data,
     isLoading: userLoading,
     isError: userError,
-  } = useQuery<LmsUser>({
+  } = useQuery<MeResponse>({
     queryKey: ["currentUser"],
-    queryFn: async () => (await axiosInstance.get("/api/me")).data,
+    queryFn: async () => {
+      const response = await axiosInstance.get("/api/me");
+      return response.data;
+    },
   });
+
+  const user = data?.data;
 
   const {
     data: stats,
@@ -134,10 +143,15 @@ export default function SettingsPage() {
 
   const updateProfile = useMutation({
     mutationFn: (values: ProfileFormValues) =>
-      axiosInstance.patch("/api/me/update", values),
-    onSuccess: () => {
+      axiosInstance.patch("/api/me", values),
+    onSuccess: (response) => {
       toast.success("Profile updated");
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+
+      queryClient.setQueryData(["currentUser"], response.data.data);
+
+      queryClient.invalidateQueries({
+        queryKey: ["currentUser"],
+      });
     },
     onError: () => toast.error("Failed to update profile"),
   });

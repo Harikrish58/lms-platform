@@ -41,8 +41,8 @@ export default function ImageUpload({ value, onChange, onRemove, endpoint = "/ap
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      if (response.data?.url) {
-        onChange(response.data.url);
+      if (response.data?.data?.url) {
+        onChange(response.data.data.url);
         toast.success("Image uploaded successfully");
       }
     } catch (error) {
