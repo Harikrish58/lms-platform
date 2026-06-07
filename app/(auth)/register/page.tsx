@@ -40,21 +40,21 @@ const registerSchema = z
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
+interface ApiErrorResponse {
+  message?: string;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
 
-  const [loading, setLoading] = useState(false);
-  const [globalError, setGlobalError] = useState<string | null>(
-    null,
-  );
+  const [globalError, setGlobalError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-
     defaultValues: {
       email: "",
       name: "",
@@ -65,7 +65,6 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      setLoading(true);
       setGlobalError(null);
 
       const res = await registerUser(data);
@@ -73,23 +72,19 @@ export default function RegisterPage() {
       if (res.success) {
         router.push("/login");
       } else {
-        setGlobalError(
-          res.message || "Registration failed",
-        );
+        setGlobalError(res.message || "Registration failed");
       }
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
+        const axiosError: AxiosError<ApiErrorResponse> = err;
         setGlobalError(
-          err.response?.data?.message ||
-            "Registration failed",
+          typeof axiosError.response?.data?.message === "string"
+            ? axiosError.response.data.message
+            : "Registration failed",
         );
       } else {
-        setGlobalError(
-          "Something went wrong. Please try again.",
-        );
+        setGlobalError("Something went wrong. Please try again.");
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -147,7 +142,7 @@ export default function RegisterPage() {
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="font-bold text-indigo-600 transition-colors hover:text-indigo-500"
+                  className="font-bold text-teal-600 transition-colors hover:text-teal-700"
                 >
                   Sign in
                 </Link>
@@ -159,7 +154,7 @@ export default function RegisterPage() {
               
               {/* Global Error */}
               {globalError && (
-                <div className="mb-6 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
                   <AlertCircle
                     size={18}
                     className="mt-0.5 shrink-0 text-rose-600"
@@ -175,11 +170,12 @@ export default function RegisterPage() {
               <form
                 onSubmit={handleSubmit(onSubmit)}
                 className="space-y-6"
+                noValidate
               >
                 
                 {/* Name */}
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
+                  <label htmlFor="name" className="mb-2 block text-sm font-bold text-slate-700">
                     Full name
                   </label>
 
@@ -189,19 +185,23 @@ export default function RegisterPage() {
                     </div>
 
                     <input
+                      id="name"
                       type="text"
                       placeholder="John Doe"
+                      autoComplete="name"
+                      aria-invalid={!!errors.name}
+                      aria-describedby={errors.name ? "name-error" : undefined}
                       {...register("name")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.name
                           ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                          : "border-slate-200 focus:border-indigo-600 focus:ring-indigo-600/20"
+                          : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />
                   </div>
 
                   {errors.name && (
-                    <p className="mt-2 text-xs font-bold text-rose-600">
+                    <p id="name-error" className="mt-2 text-xs font-bold text-rose-600">
                       {errors.name.message}
                     </p>
                   )}
@@ -209,7 +209,7 @@ export default function RegisterPage() {
 
                 {/* Email */}
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
+                  <label htmlFor="email" className="mb-2 block text-sm font-bold text-slate-700">
                     Email address
                   </label>
 
@@ -219,19 +219,23 @@ export default function RegisterPage() {
                     </div>
 
                     <input
+                      id="email"
                       type="email"
                       placeholder="you@example.com"
+                      autoComplete="email"
+                      aria-invalid={!!errors.email}
+                      aria-describedby={errors.email ? "email-error" : undefined}
                       {...register("email")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.email
                           ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                          : "border-slate-200 focus:border-indigo-600 focus:ring-indigo-600/20"
+                          : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />
                   </div>
 
                   {errors.email && (
-                    <p className="mt-2 text-xs font-bold text-rose-600">
+                    <p id="email-error" className="mt-2 text-xs font-bold text-rose-600">
                       {errors.email.message}
                     </p>
                   )}
@@ -239,7 +243,7 @@ export default function RegisterPage() {
 
                 {/* Password */}
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
+                  <label htmlFor="password" className="mb-2 block text-sm font-bold text-slate-700">
                     Password
                   </label>
 
@@ -249,19 +253,23 @@ export default function RegisterPage() {
                     </div>
 
                     <input
+                      id="password"
                       type="password"
                       placeholder="••••••••"
+                      autoComplete="new-password"
+                      aria-invalid={!!errors.password}
+                      aria-describedby={errors.password ? "password-error" : undefined}
                       {...register("password")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.password
                           ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                          : "border-slate-200 focus:border-indigo-600 focus:ring-indigo-600/20"
+                          : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />
                   </div>
 
                   {errors.password && (
-                    <p className="mt-2 text-xs font-bold text-rose-600">
+                    <p id="password-error" className="mt-2 text-xs font-bold text-rose-600">
                       {errors.password.message}
                     </p>
                   )}
@@ -269,7 +277,7 @@ export default function RegisterPage() {
 
                 {/* Confirm Password */}
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
+                  <label htmlFor="confirmPassword" className="mb-2 block text-sm font-bold text-slate-700">
                     Confirm password
                   </label>
 
@@ -279,19 +287,23 @@ export default function RegisterPage() {
                     </div>
 
                     <input
+                      id="confirmPassword"
                       type="password"
                       placeholder="••••••••"
+                      autoComplete="new-password"
+                      aria-invalid={!!errors.confirmPassword}
+                      aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
                       {...register("confirmPassword")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.confirmPassword
                           ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                          : "border-slate-200 focus:border-indigo-600 focus:ring-indigo-600/20"
+                          : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />
                   </div>
 
                   {errors.confirmPassword && (
-                    <p className="mt-2 text-xs font-bold text-rose-600">
+                    <p id="confirmPassword-error" className="mt-2 text-xs font-bold text-rose-600">
                       {errors.confirmPassword.message}
                     </p>
                   )}
@@ -300,10 +312,10 @@ export default function RegisterPage() {
                 {/* Submit */}
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
+                  disabled={isSubmitting}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-teal-700 focus:outline-none focus:ring-4 focus:ring-teal-600/30 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
                 >
-                  {loading ? (
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
                       Creating account...

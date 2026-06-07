@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
-import axiosInstance from "@/lib/axios";
 import { useLogout } from "@/hooks/useLogout";
 import {
   Search,
@@ -33,9 +32,18 @@ interface MeResponse {
   data: UserProfile;
 }
 
+// Navigation Constants
+const NAV_LINKS = [{ href: "/courses", label: "Courses" }];
+
+const PROFILE_LINKS = [
+  { href: "/my-courses", label: "My Learning", icon: BookOpen },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
 export default function Navbar() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { handleLogout } = useLogout();
 
@@ -49,42 +57,49 @@ export default function Navbar() {
   // Synchronized authenticated session fetching via TanStack Query
   const { data, isLoading } = useQuery<MeResponse | null>({
     queryKey: ["currentUser"],
-
     queryFn: async () => {
       const response = await fetch("/api/me");
-
       if (!response.ok) {
         return null;
       }
-
-      return response.json();
+      return response.json() as Promise<MeResponse>;
     },
-
     retry: false,
     staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 
   const user = data?.success ? data.data : null;
 
+  // Derived state mappings
+  const firstName = user?.name?.split(" ")[0] ?? "";
+  const isInstructor = user?.role === "INSTRUCTOR" || user?.role === "ADMIN";
+
   // Handle search submission on desktop and mobile
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const params = new URLSearchParams(searchParams.toString());
-    if (search.trim()) {
-      params.set("search", search.trim());
+    const trimmedSearch = search.trim();
+
+    if (trimmedSearch) {
+      params.set("search", trimmedSearch);
     } else {
       params.delete("search");
     }
 
-    // Reset to page 1 during a new search search query sequence
+    // Reset to page 1 during a new search query sequence
     params.delete("page");
 
     // Redirect straight to the courses overview page with the parameters
     router.push(`/courses?${params.toString()}`);
+
+    // Close mobile menu if open
+    setIsMobileMenuOpen(false);
   };
 
-  // Global outside click tracking to close drop down options panel
+  // Global outside click and escape key tracking
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -94,12 +109,25 @@ export default function Navbar() {
         setIsProfileOpen(false);
       }
     };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsProfileOpen(false);
+        setIsMobileMenuOpen(false);
+      }
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   return (
-    <header className="w-full border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-50 transition-all duration-200">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm transition-all duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4 md:gap-8">
         {/* Brand Identity - Logo Image */}
         <Link href="/" className="flex items-center shrink-0 group">
@@ -118,27 +146,35 @@ export default function Navbar() {
         <div className="flex-1 max-w-md hidden md:block">
           <form onSubmit={handleSearchSubmit} className="relative group">
             <Search
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors duration-200"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors duration-200"
               size={16}
             />
             <input
               type="text"
+              aria-label="Search courses"
               placeholder="Search premium courses..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm placeholder:text-slate-400 focus:bg-white focus:border-indigo-600/30 focus:ring-4 focus:ring-indigo-600/5 transition-all duration-200 outline-none"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm placeholder:text-slate-400 focus:bg-white focus:border-teal-600/30 focus:ring-4 focus:ring-teal-600/5 transition-all duration-200 outline-none"
             />
           </form>
         </div>
 
         {/* Navigation Options Group */}
         <nav className="hidden md:flex items-center gap-2">
-          <Link
-            href="/courses"
-            className="px-3.5 py-2 text-sm font-semibold text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-slate-50 transition-all duration-200"
-          >
-            Courses
-          </Link>
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${
+                pathname === link.href
+                  ? "text-teal-700 bg-teal-50"
+                  : "text-slate-600 hover:text-teal-600 hover:bg-slate-50"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
 
           <div className="h-4 w-[1px] bg-slate-200 mx-1" />
 
@@ -149,17 +185,21 @@ export default function Navbar() {
           ) : user ? (
             <div className="flex items-center gap-3.5">
               {/* Role Based Switch Mode Link */}
-              {(user.role === "INSTRUCTOR" || user.role === "ADMIN") && (
+              {isInstructor && (
                 <Link
                   href="/instructor/courses"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-violet-55 to-indigo-55 hover:from-violet-100 hover:to-indigo-100 text-xs font-bold text-indigo-600 border border-indigo-100/50 transition-all duration-200"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 text-xs font-bold text-teal-700 border border-teal-100 hover:bg-teal-100 transition-all duration-200"
                 >
                   <Sparkles size={13} className="animate-pulse" /> Instructor
                   Mode
                 </Link>
               )}
 
-              <button className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-xl relative transition-all duration-200 cursor-pointer">
+              <button
+                aria-label="Notifications"
+                title="Notifications"
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-xl relative transition-all duration-200 cursor-pointer"
+              >
                 <Bell size={19} />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
               </button>
@@ -167,14 +207,16 @@ export default function Navbar() {
               {/* User Dropdown Profile Workspace Container */}
               <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  onClick={() => setIsProfileOpen((prev) => !prev)}
+                  aria-expanded={isProfileOpen}
+                  aria-haspopup="menu"
                   className="flex items-center gap-2 p-1.5 pl-3.5 border border-slate-200/80 rounded-full hover:shadow-sm hover:border-slate-300 transition-all duration-200 bg-white cursor-pointer group"
                 >
                   <span className="text-xs font-bold text-slate-700 select-none">
-                    {user.name.split(" ")[0]}
+                    {firstName}
                   </span>
                   {user.avatarUrl ? (
-                    <div className="w-7 h-7 rounded-full overflow-hidden relative border border-slate-100 shadow-xs">
+                    <div className="w-7 h-7 rounded-full overflow-hidden relative border border-slate-100 shadow-sm">
                       <Image
                         src={user.avatarUrl}
                         alt={user.name}
@@ -183,8 +225,8 @@ export default function Navbar() {
                       />
                     </div>
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs">
-                      {user.name.charAt(0)}
+                    <div className="w-7 h-7 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">
+                      {user.name?.[0]?.toUpperCase()}
                     </div>
                   )}
                   <ChevronDown
@@ -194,7 +236,10 @@ export default function Navbar() {
                 </button>
 
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-2.5 w-60 bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-100/80 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right">
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-2.5 w-60 bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-100/80 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right"
+                  >
                     <div className="px-4 py-2.5 border-b border-slate-50">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                         Signed In As
@@ -205,27 +250,42 @@ export default function Navbar() {
                     </div>
 
                     <div className="p-1 space-y-0.5">
-                      <Link
-                        href="/my-courses"
-                        className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-indigo-50/50 transition-colors"
-                      >
-                        <BookOpen size={16} className="text-slate-400" /> My
-                        Learning
-                      </Link>
-                      <Link
-                        href="/settings"
-                        className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 rounded-xl hover:bg-indigo-50/50 transition-colors"
-                      >
-                        <Settings size={16} className="text-slate-400" />{" "}
-                        Settings
-                      </Link>
+                      {PROFILE_LINKS.map((link) => {
+                        const Icon = link.icon;
+                        const isActive = pathname === link.href;
+                        return (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            role="menuitem"
+                            onClick={() => setIsProfileOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-xl transition-colors ${
+                              isActive
+                                ? "text-teal-700 bg-teal-50"
+                                : "text-slate-600 hover:text-teal-600 hover:bg-teal-50/50"
+                            }`}
+                          >
+                            <Icon
+                              size={16}
+                              className={
+                                isActive ? "text-teal-600" : "text-slate-400"
+                              }
+                            />{" "}
+                            {link.label}
+                          </Link>
+                        );
+                      })}
                     </div>
 
                     <div className="h-px bg-slate-100 my-1 mx-1" />
 
                     <div className="p-1">
                       <button
-                        onClick={handleLogout}
+                        role="menuitem"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          handleLogout();
+                        }}
                         className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-rose-600 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
                       >
                         <LogOut size={16} /> Logout
@@ -245,7 +305,7 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/register"
-                className="px-5 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-indigo-600 hover:shadow-md hover:shadow-indigo-100 active:scale-[0.98] transition-all"
+                className="px-5 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-teal-600 hover:shadow-md hover:shadow-teal-100 active:scale-[0.98] transition-all"
               >
                 Get Started
               </Link>
@@ -255,9 +315,10 @@ export default function Navbar() {
 
         {/* Mobile Menu Action Trigger */}
         <button
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
           className="md:hidden p-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
           aria-label="Toggle Menu"
+          aria-expanded={isMobileMenuOpen}
         >
           {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
@@ -267,41 +328,58 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-slate-100 bg-white p-5 space-y-4 animate-in slide-in-from-top duration-200">
           {/* Mobile Search Form Wrapper */}
-          <form onSubmit={handleSearchSubmit} className="relative">
+          <form onSubmit={handleSearchSubmit} className="relative group">
             <Search
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors"
               size={16}
             />
             <input
               type="text"
+              aria-label="Search courses"
               placeholder="Search courses..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:bg-white focus:border-indigo-600/30 focus:ring-4 focus:ring-indigo-600/5 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:bg-white focus:border-teal-600/30 focus:ring-4 focus:ring-teal-600/5 transition-all"
             />
           </form>
 
           <div className="space-y-1">
-            <Link
-              href="/courses"
-              className="block px-3 py-2.5 text-base font-bold text-slate-800 hover:bg-slate-50 rounded-xl"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Courses
-            </Link>
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`block px-3 py-2.5 text-base font-bold rounded-xl ${
+                  pathname === link.href
+                    ? "text-teal-700 bg-teal-50"
+                    : "text-slate-800 hover:bg-slate-50"
+                }`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+
             {user && (
               <>
                 <Link
                   href="/my-courses"
-                  className="block px-3 py-2.5 text-base font-bold text-slate-800 hover:bg-slate-50 rounded-xl"
+                  className={`block px-3 py-2.5 text-base font-bold rounded-xl ${
+                    pathname === "/my-courses"
+                      ? "text-teal-700 bg-teal-50"
+                      : "text-slate-800 hover:bg-slate-50"
+                  }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   My Learning
                 </Link>
-                {(user.role === "INSTRUCTOR" || user.role === "ADMIN") && (
+                {isInstructor && (
                   <Link
                     href="/instructor/courses"
-                    className="block px-3 py-2.5 text-base font-bold text-indigo-600 hover:bg-indigo-50/50 rounded-xl"
+                    className={`block px-3 py-2.5 text-base font-bold rounded-xl ${
+                      pathname?.startsWith("/instructor")
+                        ? "text-teal-700 bg-teal-50"
+                        : "text-teal-600 hover:bg-teal-50/50"
+                    }`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Instructor Dashboard
@@ -315,6 +393,7 @@ export default function Navbar() {
             {user ? (
               <button
                 onClick={() => {
+                  setIsProfileOpen(false);
                   handleLogout();
                   setIsMobileMenuOpen(false);
                 }}
@@ -333,7 +412,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href="/register"
-                  className="block w-full py-2.5 bg-indigo-600 text-white text-center font-bold rounded-xl hover:bg-indigo-700 shadow-sm"
+                  className="block w-full py-2.5 bg-teal-600 text-white text-center font-bold rounded-xl hover:bg-teal-700 shadow-sm transition-all"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Sign Up

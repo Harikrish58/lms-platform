@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 export default function AuthLayout({
   children,
@@ -13,9 +14,15 @@ export default function AuthLayout({
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isMounted = true;
+
     const checkAuth = async () => {
       try {
-        const response = await fetch("/api/me");
+        const response = await fetch("/api/me", {
+          cache: "no-cache",
+          signal: controller.signal,
+        });
 
         // Already logged in → redirect away from auth pages
         if (response.ok) {
@@ -23,20 +30,32 @@ export default function AuthLayout({
           return;
         }
 
-        setIsChecking(false);
-      } catch (error) {
-        console.error("Auth check failed:", error);
-        setIsChecking(false);
+        if (isMounted) setIsChecking(false);
+      } catch (error: unknown) {
+        // Silently ignore expected abort errors during cleanup
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        
+        if (isMounted) setIsChecking(false);
       }
     };
 
     checkAuth();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [router]);
 
   if (isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-sm font-medium">Preparing environment...</p>
+        </div>
       </div>
     );
   }

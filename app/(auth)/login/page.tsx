@@ -15,7 +15,7 @@ import {
   ArrowRight,
   AlertCircle,
 } from "lucide-react";
-import { isAxiosError } from "axios";
+import { isAxiosError, AxiosError } from "axios";
 
 import axiosInstance from "@/lib/axios";
 
@@ -32,13 +32,15 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+interface ApiErrorResponse {
+  message?: string;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [globalError, setGlobalError] = useState<string | null>(
-    null,
-  );
+  const [globalError, setGlobalError] = useState<string | null>(null);
 
   const {
     register,
@@ -46,7 +48,6 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-
     defaultValues: {
       email: "",
       password: "",
@@ -70,14 +71,14 @@ export default function LoginPage() {
       router.refresh();
     } catch (error) {
       if (isAxiosError(error)) {
+        const axiosError: AxiosError<ApiErrorResponse> = error;
         setGlobalError(
-          error.response?.data?.message ||
-            "Invalid email or password",
+          typeof axiosError.response?.data?.message === "string"
+            ? axiosError.response.data.message
+            : "Invalid email or password",
         );
       } else {
-        setGlobalError(
-          "An unexpected error occurred. Please try again.",
-        );
+        setGlobalError("An unexpected error occurred. Please try again.");
       }
     }
   };
@@ -136,7 +137,7 @@ export default function LoginPage() {
                 Don&apos;t have an account?{" "}
                 <Link
                   href="/register"
-                  className="font-bold text-indigo-600 transition-colors hover:text-indigo-500"
+                  className="font-bold text-teal-600 transition-colors hover:text-teal-700"
                 >
                   Sign up for free
                 </Link>
@@ -148,7 +149,7 @@ export default function LoginPage() {
               
               {/* Global Error */}
               {globalError && (
-                <div className="mb-6 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
                   <AlertCircle
                     size={18}
                     className="mt-0.5 shrink-0 text-rose-600"
@@ -164,6 +165,7 @@ export default function LoginPage() {
               <form
                 className="space-y-6"
                 onSubmit={handleSubmit(onSubmit)}
+                noValidate
               >
                 
                 {/* Email */}
@@ -185,17 +187,19 @@ export default function LoginPage() {
                       type="email"
                       autoComplete="email"
                       placeholder="you@example.com"
+                      aria-invalid={!!errors.email}
+                      aria-describedby={errors.email ? "email-error" : undefined}
                       {...register("email")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.email
                           ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                          : "border-slate-200 focus:border-indigo-600 focus:ring-indigo-600/20"
+                          : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />
                   </div>
 
                   {errors.email && (
-                    <p className="mt-2 text-xs font-bold text-rose-600">
+                    <p id="email-error" className="mt-2 text-xs font-bold text-rose-600">
                       {errors.email.message}
                     </p>
                   )}
@@ -213,7 +217,7 @@ export default function LoginPage() {
 
                     <Link
                       href="/forgot-password"
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-500"
+                      className="text-xs font-bold text-teal-600 hover:text-teal-700"
                     >
                       Forgot password?
                     </Link>
@@ -229,17 +233,19 @@ export default function LoginPage() {
                       type="password"
                       autoComplete="current-password"
                       placeholder="••••••••"
+                      aria-invalid={!!errors.password}
+                      aria-describedby={errors.password ? "password-error" : undefined}
                       {...register("password")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.password
                           ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                          : "border-slate-200 focus:border-indigo-600 focus:ring-indigo-600/20"
+                          : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />
                   </div>
 
                   {errors.password && (
-                    <p className="mt-2 text-xs font-bold text-rose-600">
+                    <p id="password-error" className="mt-2 text-xs font-bold text-rose-600">
                       {errors.password.message}
                     </p>
                   )}
@@ -249,7 +255,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-teal-700 focus:outline-none focus:ring-4 focus:ring-teal-600/30 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
                 >
                   {isSubmitting ? (
                     <>
