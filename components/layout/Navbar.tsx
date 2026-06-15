@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Image from "next/image";
@@ -40,7 +40,7 @@ const PROFILE_LINKS = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export default function Navbar() {
+function NavbarContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -48,9 +48,7 @@ export default function Navbar() {
   const { handleLogout } = useLogout();
 
   // Initialize navbar search from the current URL if it exists
-  const [search, setSearch] = useState(() => {
-    return searchParams.get("search") || "";
-  });
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -59,9 +57,7 @@ export default function Navbar() {
     queryKey: ["currentUser"],
     queryFn: async () => {
       const response = await fetch("/api/me");
-      if (!response.ok) {
-        return null;
-      }
+      if (!response.ok) return null;
       return response.json() as Promise<MeResponse>;
     },
     retry: false,
@@ -74,12 +70,37 @@ export default function Navbar() {
 
   // Derived state mappings
   const firstName = user?.name?.split(" ")[0] ?? "";
+
+  const currentWorkspace = pathname.startsWith("/admin")
+    ? "ADMIN"
+    : pathname.startsWith("/instructor")
+      ? "INSTRUCTOR"
+      : "STUDENT";
+
   const isInstructor = user?.role === "INSTRUCTOR" || user?.role === "ADMIN";
+
+  const workspaceLinks: {
+    label: string;
+    href: string;
+  }[] = [];
+
+  if (isInstructor) {
+    workspaceLinks.push({
+      label: "Instructor",
+      href: "/instructor/courses",
+    });
+  }
+
+  if (user?.role === "ADMIN") {
+    workspaceLinks.push({
+      label: "Admin",
+      href: "/admin",
+    });
+  }
 
   // Handle search submission on desktop and mobile
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     const params = new URLSearchParams(searchParams.toString());
     const trimmedSearch = search.trim();
 
@@ -129,6 +150,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm transition-all duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4 md:gap-8">
+        
         {/* Brand Identity - Logo Image */}
         <Link href="/" className="flex items-center shrink-0 group">
           <div className="relative w-[130px] h-[40px] flex items-center">
@@ -185,16 +207,6 @@ export default function Navbar() {
           ) : user ? (
             <div className="flex items-center gap-3.5">
               {/* Role Based Switch Mode Link */}
-              {isInstructor && (
-                <Link
-                  href="/instructor/courses"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 text-xs font-bold text-teal-700 border border-teal-100 hover:bg-teal-100 transition-all duration-200"
-                >
-                  <Sparkles size={13} className="animate-pulse" /> Instructor
-                  Mode
-                </Link>
-              )}
-
               <button
                 aria-label="Notifications"
                 title="Notifications"
@@ -267,15 +279,52 @@ export default function Navbar() {
                           >
                             <Icon
                               size={16}
-                              className={
-                                isActive ? "text-teal-600" : "text-slate-400"
-                              }
-                            />{" "}
+                              className={isActive ? "text-teal-600" : "text-slate-400"}
+                            />
                             {link.label}
                           </Link>
                         );
                       })}
                     </div>
+
+                    {workspaceLinks.length > 0 && (
+                      <>
+                        <div className="px-4 pt-3 pb-2">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            Workspace
+                          </p>
+                        </div>
+
+                        <div className="px-1 pb-2 space-y-0.5">
+                          {workspaceLinks.map((workspace) => {
+                            const isActive =
+                              currentWorkspace === workspace.label.toUpperCase();
+
+                            return (
+                              <Link
+                                key={workspace.href}
+                                href={workspace.href}
+                                onClick={() => setIsProfileOpen(false)}
+                                className={`flex items-center justify-between px-3 py-2 text-sm rounded-xl transition-colors ${
+                                  isActive
+                                    ? "bg-teal-50 text-teal-700 font-semibold"
+                                    : "text-slate-600 hover:bg-slate-50"
+                                }`}
+                              >
+                                <span>{workspace.label}</span>
+
+                                {isActive && (
+                                  <Sparkles
+                                    size={14}
+                                    className="text-teal-600"
+                                  />
+                                )}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
 
                     <div className="h-px bg-slate-100 my-1 mx-1" />
 
@@ -363,28 +412,47 @@ export default function Navbar() {
               <>
                 <Link
                   href="/my-courses"
+                  onClick={() => setIsMobileMenuOpen(false)}
                   className={`block px-3 py-2.5 text-base font-bold rounded-xl ${
                     pathname === "/my-courses"
                       ? "text-teal-700 bg-teal-50"
                       : "text-slate-800 hover:bg-slate-50"
                   }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   My Learning
                 </Link>
-                {isInstructor && (
-                  <Link
-                    href="/instructor/courses"
-                    className={`block px-3 py-2.5 text-base font-bold rounded-xl ${
-                      pathname?.startsWith("/instructor")
-                        ? "text-teal-700 bg-teal-50"
-                        : "text-teal-600 hover:bg-teal-50/50"
-                    }`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Instructor Dashboard
-                  </Link>
-                )}
+
+                <Link
+                  href="/settings"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block px-3 py-2.5 text-base font-bold rounded-xl ${
+                    pathname === "/settings"
+                      ? "text-teal-700 bg-teal-50"
+                      : "text-slate-800 hover:bg-slate-50"
+                  }`}
+                >
+                  Settings
+                </Link>
+
+                {workspaceLinks.map((workspace) => {
+                  const isActive =
+                    currentWorkspace === workspace.label.toUpperCase();
+
+                  return (
+                    <Link
+                      key={workspace.href}
+                      href={workspace.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`block px-3 py-2.5 text-base font-bold rounded-xl ${
+                        isActive
+                          ? "text-teal-700 bg-teal-50"
+                          : "text-slate-800 hover:bg-slate-50"
+                      }`}
+                    >
+                      {workspace.label} Workspace
+                    </Link>
+                  );
+                })}
               </>
             )}
           </div>
@@ -423,5 +491,17 @@ export default function Navbar() {
         </div>
       )}
     </header>
+  );
+}
+
+export default function Navbar() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-16 border-b border-slate-200/60 bg-white/90" />
+      }
+    >
+      <NavbarContent />
+    </Suspense>
   );
 }

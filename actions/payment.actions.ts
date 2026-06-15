@@ -24,6 +24,7 @@ export const createCheckoutSession = async (
         title: true,
         price: true,
         isPublished: true,
+        instructorId: true,
       },
     });
 
@@ -31,6 +32,14 @@ export const createCheckoutSession = async (
       return {
         success: false,
         message: "Course not available",
+        status: 400,
+      };
+    }
+
+    if (course.instructorId === userId) {
+      return {
+        success: false,
+        message: "You cannot purchase your own course",
         status: 400,
       };
     }
