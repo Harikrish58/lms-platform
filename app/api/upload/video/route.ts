@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     const command = new PutObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME as string,
+      Bucket: process.env.AWS_BUCKET_NAME as string,
       Key: uniqueKey,
       Body: buffer,
       ContentType: file.type,
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
     await s3Client.send(command);
 
-    const videoUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
+    const videoUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
 
     return NextResponse.json(
       {
@@ -73,6 +73,8 @@ export async function POST(request: Request) {
       {
         success: false,
         message: "Internal server error during video upload",
+        error:
+        error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     );

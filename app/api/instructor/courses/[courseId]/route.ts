@@ -26,7 +26,10 @@ export async function GET(
       return auth.error;
     }
 
-    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    const roleCheck = requireRole(auth.user.role, [
+  Role.INSTRUCTOR,
+  Role.ADMIN,
+]);
 
     if (!roleCheck.success) {
       return NextResponse.json(
@@ -53,6 +56,7 @@ export async function GET(
     const result = await getCourseForInstructor(
       courseId,
       auth.user.id,
+      auth.user.role
     );
 
     if (!result.success) {

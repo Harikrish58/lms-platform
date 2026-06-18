@@ -162,7 +162,8 @@ export async function POST(request: Request) {
       return auth.error;
     }
 
-    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    // Add Role.ADMIN to bypass instructor restriction
+    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR, Role.ADMIN]);
 
     if (!roleCheck.success) {
       return NextResponse.json(
@@ -257,7 +258,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return auth.error;
     }
 
-    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    // Add Role.ADMIN to bypass instructor restriction
+    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR, Role.ADMIN]);
 
     if (!roleCheck.success) {
       return NextResponse.json(
@@ -352,7 +354,8 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       return auth.error;
     }
 
-    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    // Add Role.ADMIN to bypass instructor restriction
+    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR, Role.ADMIN]);
 
     if (!roleCheck.success) {
       return NextResponse.json(

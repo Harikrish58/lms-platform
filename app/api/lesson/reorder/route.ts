@@ -17,7 +17,10 @@ export async function PATCH(request: Request) {
       return auth.error;
     }
 
-    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    const roleCheck = requireRole(auth.user.role, [
+      Role.INSTRUCTOR,
+      Role.ADMIN,
+    ]);
 
     if (!roleCheck.success) {
       return NextResponse.json(

@@ -26,7 +26,16 @@ import CurriculumBuilder from "@/components/courses/CurriculumBuilder";
 interface LessonData {
   id: string;
   title: string;
+  description: string;
+  videoUrl: string | null;
+  videoKey: string | null;
+  thumbnailUrl: string | null;
+  thumbnailPublicId: string | null;
+  pdfUrl: string | null;
+  pdfPublicId: string | null;
+  resources: string | null;
   order: number;
+  sectionId: string;
 }
 
 interface SectionData {

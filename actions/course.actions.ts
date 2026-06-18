@@ -718,12 +718,13 @@ export const toggleCoursePublishStatus = async (
 export const getCourseForInstructor = async (
   courseId: string,
   userId: string,
+  userRole: Role,
 ) => {
   try {
     const course = await prisma.course.findFirst({
       where: {
         id: courseId,
-        instructorId: userId,
+        ...(userRole === Role.ADMIN ? {} : { instructorId: userId }),
       },
       include: {
         sections: {
@@ -734,6 +735,20 @@ export const getCourseForInstructor = async (
             lessons: {
               orderBy: {
                 order: "asc",
+              },
+              select: {
+                id: true,
+                title: true,
+                description: true,
+                videoUrl: true,
+                videoKey: true,
+                thumbnailUrl: true,
+                thumbnailPublicId: true,
+                pdfUrl: true,
+                pdfPublicId: true,
+                resources: true,
+                order: true,
+                sectionId: true,
               },
             },
           },
@@ -768,12 +783,10 @@ export const getCourseForInstructor = async (
 /**
  * Returns all courses created by the instructor.
  */
-export const getInstructorCourses = async (userId: string) => {
+export const getInstructorCourses = async (userId: string, userRole: Role) => {
   try {
     const courses = await prisma.course.findMany({
-      where: {
-        instructorId: userId,
-      },
+      where: { ...(userRole === Role.ADMIN ? {} : { instructorId: userId }) },
       orderBy: {
         createdAt: "desc",
       },

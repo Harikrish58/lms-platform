@@ -16,8 +16,10 @@ export async function POST(request: Request) {
     if (!auth.success) {
       return auth.error;
     }
-
-    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    const roleCheck = requireRole(auth.user.role, [
+      Role.INSTRUCTOR,
+      Role.ADMIN,
+    ]);
 
     if (!roleCheck.success) {
       return NextResponse.json(
@@ -29,8 +31,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const body = await request.json();
+
     const { searchParams } = new URL(request.url);
-    const courseId = searchParams.get("courseId");
+
+    const courseId = searchParams.get("courseId") || body.courseId;
 
     if (!courseId) {
       return NextResponse.json(
@@ -41,8 +46,6 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-
-    const body = await request.json();
 
     const result = await createSection(
       courseId,

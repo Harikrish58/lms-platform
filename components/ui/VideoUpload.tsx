@@ -12,7 +12,12 @@ interface VideoUploadProps {
   endpoint?: string;
 }
 
-export default function VideoUpload({ value, onChange, onRemove, endpoint = "/api/upload/video" }: VideoUploadProps) {
+export default function VideoUpload({
+  value,
+  onChange,
+  onRemove,
+  endpoint = "/api/upload/video",
+}: VideoUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,9 +46,8 @@ export default function VideoUpload({ value, onChange, onRemove, endpoint = "/ap
         // Optional: configure onUploadProgress here if utilizing an advanced Axios setup
       });
 
-      if (response.data?.url) {
-        onChange(response.data.url, response.data?.key);
-        toast.success("Video uploaded successfully");
+      if (response.data?.data?.url) {
+        onChange(response.data.data.url, response.data.data.key);
       }
     } catch (error) {
       console.error("Video upload failed:", error);
@@ -57,11 +61,7 @@ export default function VideoUpload({ value, onChange, onRemove, endpoint = "/ap
   if (value) {
     return (
       <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-900 group">
-        <video 
-          src={value} 
-          controls 
-          className="w-full h-full object-contain"
-        />
+        <video src={value} controls className="w-full h-full object-contain" />
         <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <button
             onClick={onRemove}
@@ -72,14 +72,29 @@ export default function VideoUpload({ value, onChange, onRemove, endpoint = "/ap
             <X size={16} />
           </button>
         </div>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="absolute top-4 left-4 rounded-full bg-slate-900 px-3 py-2 text-xs font-bold text-white"
+        >
+          Replace Video
+        </button>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleUpload}
+          accept="video/mp4,video/webm"
+          className="hidden"
+        />
       </div>
     );
   }
 
   return (
-    <div 
+    <div
       onClick={() => fileInputRef.current?.click()}
-      className={`border-2 border-dashed border-slate-200 rounded-xl p-10 flex flex-col items-center justify-center text-center bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300 transition-all cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`border-2 border-dashed border-slate-200 rounded-xl p-10 flex flex-col items-center justify-center text-center bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300 transition-all cursor-pointer ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
     >
       <input
         type="file"
@@ -88,17 +103,21 @@ export default function VideoUpload({ value, onChange, onRemove, endpoint = "/ap
         accept="video/mp4, video/webm"
         className="hidden"
       />
-      
+
       {isUploading ? (
         <Loader2 size={40} className="text-indigo-600 animate-spin mb-4" />
       ) : (
         <UploadCloud size={40} className="text-slate-400 mb-4" />
       )}
-      
+
       <p className="text-base font-bold text-slate-700">
-        {isUploading ? "Uploading to AWS S3... Do not close window." : "Click to select a video file"}
+        {isUploading
+          ? "Uploading to AWS S3... Do not close window."
+          : "Click to select a video file"}
       </p>
-      <p className="text-sm text-slate-500 mt-2">MP4 or WebM format recommended. Max 500MB.</p>
+      <p className="text-sm text-slate-500 mt-2">
+        MP4 or WebM format recommended. Max 500MB.
+      </p>
     </div>
   );
 }

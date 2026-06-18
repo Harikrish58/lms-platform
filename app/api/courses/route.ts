@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createCourse, getCourses } from "@/actions/course.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
 import { requireRole } from "@/lib/utils/authorize";
+import { Role } from "@/generated/prisma/client";
 
 /**
  * POST /api/courses
@@ -16,7 +17,10 @@ export async function POST(request: Request) {
       return auth.error;
     }
 
-    const roleCheck = requireRole(auth.user.role, ["INSTRUCTOR"]);
+    const roleCheck = requireRole(auth.user.role, [
+      Role.INSTRUCTOR,
+      Role.ADMIN,
+    ]);
 
     if (!roleCheck.success) {
       return NextResponse.json(
