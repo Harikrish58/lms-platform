@@ -19,10 +19,7 @@ type RouteParams = {
  * GET /api/courses/[courseId]
  * Get a course by ID.
  */
-export async function GET(
-  _request: Request,
-  { params }: RouteParams,
-) {
+export async function GET(_request: Request, { params }: RouteParams) {
   try {
     const { courseId } = await params;
 
@@ -72,10 +69,7 @@ export async function GET(
  * PATCH /api/courses/[courseId]
  * Update a course.
  */
-export async function PATCH(
-  request: Request,
-  { params }: RouteParams,
-) {
+export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const auth = await authMiddleware();
 
@@ -83,7 +77,10 @@ export async function PATCH(
       return auth.error;
     }
 
-    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    const roleCheck = requireRole(auth.user.role, [
+      Role.INSTRUCTOR,
+      Role.ADMIN,
+    ]);
 
     if (!roleCheck.success) {
       return NextResponse.json(
@@ -150,10 +147,7 @@ export async function PATCH(
  * DELETE /api/courses/[courseId]
  * Delete a course.
  */
-export async function DELETE(
-  _request: Request,
-  { params }: RouteParams,
-) {
+export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
     const auth = await authMiddleware();
 
@@ -185,11 +179,7 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteCourse(
-      courseId,
-      auth.user.id,
-      auth.user.role,
-    );
+    const result = await deleteCourse(courseId, auth.user.id, auth.user.role);
 
     if (!result.success) {
       return NextResponse.json(

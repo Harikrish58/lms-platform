@@ -203,7 +203,6 @@ export const createLesson = async (
         message: "Unauthorized access to this section",
       };
     }
-
     const videoFile = files.video;
 
     if (!videoFile) {
@@ -214,6 +213,12 @@ export const createLesson = async (
       };
     }
 
+    const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
+
+    const s3Result = await uploadToS3(videoBuffer, videoFile.type);
+
+    uploadedS3Key = s3Result.key;
+
     const lastLesson = await prisma.lesson.findFirst({
       where: { sectionId },
       orderBy: { order: "desc" },
@@ -221,12 +226,6 @@ export const createLesson = async (
     });
 
     const newOrder = lastLesson ? lastLesson.order + 1 : 1;
-
-    const videoBuffer = Buffer.from(await videoFile.arrayBuffer());
-
-    const s3Result = await uploadToS3(videoBuffer, videoFile.type);
-
-    uploadedS3Key = s3Result.key;
 
     let thumbnailUrl: string | null = null;
     let pdfUrl: string | null = null;
@@ -248,7 +247,7 @@ export const createLesson = async (
     const lesson = await prisma.lesson.create({
       data: {
         title: parsed.data.title,
-        description: parsed.data.description,
+        description: parsed.data.description ?? "",
         videoUrl: s3Result.url,
         videoKey: s3Result.key,
         thumbnailUrl,
@@ -483,14 +482,33 @@ export const updateLesson = async (
       };
     }
 
-    const { title, description, resources } = parsed.data;
+    const {
+      title,
+      description,
+      resources,
+      videoUrl: incomingVideoUrl,
+      videoKey: incomingVideoKey,
+    } = parsed.data as {
+      title?: string;
+      description?: string;
+      resources?: string;
+      videoUrl?: string | null;
+      videoKey?: string | null;
+    };
 
-    let videoUrl = existingLesson.videoUrl;
-    let videoKey = existingLesson.videoKey;
+    let videoUrl: string | null = incomingVideoUrl ?? existingLesson.videoUrl;
+    let videoKey: string | null = incomingVideoKey ?? existingLesson.videoKey;
     let thumbnailUrl = existingLesson.thumbnailUrl;
     let thumbnailPublicId = existingLesson.thumbnailPublicId;
     let pdfUrl = existingLesson.pdfUrl;
     let pdfPublicId = existingLesson.pdfPublicId;
+
+    if (incomingVideoUrl === null && existingLesson.videoKey) {
+      await deleteFromS3(existingLesson.videoKey);
+
+      videoUrl = null;
+      videoKey = null;
+    }
 
     if (files?.video) {
       const buffer = Buffer.from(await files.video.arrayBuffer());

@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  Save,
-  Loader2,
-  Layout,
-  Video,
-} from "lucide-react";
+import { ArrowLeft, Save, Loader2, Layout, Video } from "lucide-react";
 import * as z from "zod";
 import toast from "react-hot-toast";
 
@@ -25,8 +19,7 @@ const lessonFormSchema = z.object({
 
 type LessonFormValues = z.infer<typeof lessonFormSchema>;
 
-interface LessonUpdatePayload
-  extends Partial<LessonFormValues> {
+interface LessonUpdatePayload extends Partial<LessonFormValues> {
   videoUrl?: string | null;
   videoKey?: string | null;
 }
@@ -69,9 +62,7 @@ export default function EditLessonPage({
   } = useQuery({
     queryKey: ["instructor-lesson", lessonId],
     queryFn: async () => {
-      const response = await axiosInstance.get(
-        `/api/courses/${courseId}/lessons/${lessonId}`
-      );
+      const response = await axiosInstance.get(`/api/lesson/${lessonId}`);
 
       return response.data.data;
     },
@@ -90,8 +81,8 @@ export default function EditLessonPage({
   const updateLessonMutation = useMutation({
     mutationFn: async (payload: LessonUpdatePayload) => {
       const response = await axiosInstance.patch(
-        `/api/courses/${courseId}/lessons/${lessonId}`,
-        payload
+        `/api/lesson/${lessonId}`,
+        payload,
       );
 
       return response.data;
@@ -118,10 +109,7 @@ export default function EditLessonPage({
     updateLessonMutation.mutate(values);
   };
 
-  const handleVideoChange = (
-    videoUrl: string,
-    videoKey?: string
-  ) => {
+  const handleVideoChange = (videoUrl: string, videoKey?: string) => {
     updateLessonMutation.mutate({
       videoUrl,
       videoKey: videoKey ?? null,
@@ -172,11 +160,7 @@ export default function EditLessonPage({
       <div className="mb-8 flex items-center justify-between border-b border-slate-100 pb-6">
         <div className="flex items-center gap-4">
           <button
-            onClick={() =>
-              router.push(
-                `/instructor/courses/${courseId}/edit`
-              )
-            }
+            onClick={() => router.push(`/instructor/courses/${courseId}/edit`)}
             className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100"
             aria-label="Return to course editor"
           >
@@ -184,9 +168,7 @@ export default function EditLessonPage({
           </button>
 
           <div>
-            <h1 className="text-2xl font-black text-slate-900">
-              Edit Lesson
-            </h1>
+            <h1 className="text-2xl font-black text-slate-900">Edit Lesson</h1>
 
             <p className="text-sm font-medium text-slate-500">
               Configure lesson content and video resources.
@@ -199,20 +181,14 @@ export default function EditLessonPage({
         <div>
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-6 flex items-center gap-2">
-              <Layout
-                size={20}
-                className="text-teal-600"
-              />
+              <Layout size={20} className="text-teal-600" />
 
               <h2 className="text-lg font-bold text-slate-900">
                 Lesson Details
               </h2>
             </div>
 
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="space-y-4"
-            >
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-bold text-slate-700">
                   Lesson Title
@@ -245,20 +221,14 @@ export default function EditLessonPage({
 
               <button
                 type="submit"
-                disabled={
-                  updateLessonMutation.isPending || !isDirty
-                }
+                disabled={updateLessonMutation.isPending || !isDirty}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 font-bold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {updateLessonMutation.isPending ? (
-                  <Loader2
-                    size={18}
-                    className="animate-spin"
-                  />
+                  <Loader2 size={18} className="animate-spin" />
                 ) : (
                   <Save size={18} />
                 )}
-
                 Save Changes
               </button>
             </form>
@@ -268,14 +238,9 @@ export default function EditLessonPage({
         <div>
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
-              <Video
-                size={20}
-                className="text-teal-600"
-              />
+              <Video size={20} className="text-teal-600" />
 
-              <h2 className="text-lg font-bold text-slate-900">
-                Lesson Video
-              </h2>
+              <h2 className="text-lg font-bold text-slate-900">Lesson Video</h2>
             </div>
 
             <VideoUpload

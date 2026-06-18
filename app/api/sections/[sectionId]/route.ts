@@ -15,10 +15,7 @@ type RouteParams = {
  * PATCH /api/sections/[sectionId]
  * Update a section.
  */
-export async function PATCH(
-  request: Request,
-  { params }: RouteParams,
-) {
+export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const auth = await authMiddleware();
 
@@ -26,7 +23,10 @@ export async function PATCH(
       return auth.error;
     }
 
-    const roleCheck = requireRole(auth.user.role, [Role.INSTRUCTOR]);
+    const roleCheck = requireRole(auth.user.role, [
+      Role.INSTRUCTOR,
+      Role.ADMIN,
+    ]);
 
     if (!roleCheck.success) {
       return NextResponse.json(
@@ -95,10 +95,7 @@ export async function PATCH(
  * DELETE /api/sections/[sectionId]
  * Delete a section.
  */
-export async function DELETE(
-  _request: Request,
-  { params }: RouteParams,
-) {
+export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
     const auth = await authMiddleware();
 
@@ -130,11 +127,7 @@ export async function DELETE(
       );
     }
 
-    const result = await deleteSection(
-      sectionId,
-      auth.user.id,
-      auth.user.role,
-    );
+    const result = await deleteSection(sectionId, auth.user.id, auth.user.role);
 
     if (!result.success) {
       return NextResponse.json(

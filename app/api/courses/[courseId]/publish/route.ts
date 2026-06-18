@@ -1,9 +1,10 @@
-import { Role } from "@prisma/client";
+
 import { NextResponse } from "next/server";
 
 import { toggleCoursePublishStatus } from "@/actions/course.actions";
 import { authMiddleware } from "@/lib/middleware/auth";
 import { requireRole } from "@/lib/utils/authorize";
+import { Role } from "@/generated/prisma/client";
 
 type RouteParams = {
   params: Promise<{

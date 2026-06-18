@@ -101,7 +101,7 @@ model Lesson {
   description String
 
   // Video(S3)
-  videoUrl String // Stored video location (S3/Cloudinary)
+  videoUrl String? // Stored video location (S3/Cloudinary)
   videoKey String? // Required for deletion
 
   // Thumbnail (Cloudinary)
