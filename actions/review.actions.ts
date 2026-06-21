@@ -1,8 +1,7 @@
 import { canAccessCourse } from "@/actions/enrollment.actions";
 import { prisma } from "@/lib/prisma";
 import { ReviewSchema, UpdateReviewSchema } from "@/schemas/review.schema";
-import { Prisma } from "@prisma/client";
-import { Role } from "@/generated/prisma/client";
+import { Prisma, Role } from "@/generated/prisma/client";
 
 /**
  * Review Actions
