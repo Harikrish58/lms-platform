@@ -79,7 +79,7 @@ export const getAdminAnalytics = async () => {
 
     totalReviews,
 
-    totalRevenue: revenueAggregate._sum.amount ?? 0,
+    totalRevenue: (revenueAggregate._sum.amount ?? 0) / 100,
   };
 };
 
@@ -379,10 +379,76 @@ export const deleteCourse = async (courseId: string) => {
     throw new Error("Course not found");
   }
 
-  await prisma.course.delete({
-    where: {
-      id: courseId,
-    },
+  await prisma.$transaction(async (tx) => {
+    const sections = await tx.section.findMany({
+      where: { courseId: courseId },
+      select: { id: true },
+    });
+
+    const sectionIds = sections.map((section) => section.id);
+
+    const lessons = await tx.lesson.findMany({
+      where: {
+        sectionId: {
+          in: sectionIds,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const lessonIds = lessons.map((lesson) => lesson.id);
+
+    if (lessonIds.length > 0) {
+      await tx.progress.deleteMany({
+        where: {
+          lessonId: {
+            in: lessonIds,
+          },
+        },
+      });
+    }
+
+    if (sectionIds.length > 0) {
+      await tx.lesson.deleteMany({
+        where: {
+          sectionId: {
+            in: sectionIds,
+          },
+        },
+      });
+    }
+
+    await tx.section.deleteMany({
+      where: {
+        courseId: courseId,
+      },
+    });
+
+    await tx.enrollment.deleteMany({
+      where: {
+        courseId: courseId,
+      },
+    });
+
+    await tx.review.deleteMany({
+      where: {
+        courseId: courseId,
+      },
+    });
+
+    await tx.payment.deleteMany({
+      where: {
+        courseId: courseId,
+      },
+    });
+
+    await tx.course.delete({
+      where: {
+        id: courseId,
+      },
+    });
   });
 
   return {

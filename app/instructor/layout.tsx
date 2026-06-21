@@ -21,11 +21,6 @@ const INSTRUCTOR_ROUTES: ReadonlyArray<{
   },
 ];
 
-/**
- * Shared layout for the instructor workspace.
- * Isolates instructor navigation from the student-facing application
- * and provides a dedicated environment for course management.
- */
 export default function InstructorLayout({
   children,
 }: {
@@ -34,7 +29,7 @@ export default function InstructorLayout({
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] bg-[#fcfcfd]">
+    <div className="flex min-h-[calc(100vh-64px)] bg-slate-50">
       <aside className="hidden w-64 flex-col border-r border-slate-200 bg-white px-4 py-8 md:flex">
         <div className="mb-8 px-4">
           <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
@@ -52,10 +47,10 @@ export default function InstructorLayout({
               <Link
                 key={route.href}
                 href={route.href}
-                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-colors ${
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200 ${
                   isActive
-                    ? "bg-indigo-50 text-indigo-600"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-teal-50 text-teal-700"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-teal-600"
                 }`}
               >
                 <Icon size={18} />

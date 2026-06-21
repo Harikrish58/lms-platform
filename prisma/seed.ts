@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { CourseCategory } from "@/generated/prisma/enums";
 
 const VIDEO_URL =
   "https://lms-videos-hari-2026.s3.eu-central-1.amazonaws.com/lms_Working/Create_a_cinematic_modern_SaaS.mp4";
@@ -37,8 +38,10 @@ async function main() {
   });
 
   const courses = [
+    // --- DEVELOPMENT CATEGORY (5 Courses) ---
     {
       title: "Full Stack LMS with Next.js",
+      category: "DEVELOPMENT",
       description: "Learn how to build a real-world LMS step by step.",
       price: 0,
       sections: [
@@ -49,7 +52,8 @@ async function main() {
       ],
     },
     {
-      title: "Advanced Next.js 15",
+      title: "Advanced Next.js 16",
+      category: "DEVELOPMENT",
       description:
         "Master Server Components, Server Actions and production deployment.",
       price: 99,
@@ -62,6 +66,7 @@ async function main() {
     },
     {
       title: "TypeScript Masterclass",
+      category: "DEVELOPMENT",
       description:
         "Complete TypeScript course from beginner to advanced concepts.",
       price: 79,
@@ -74,6 +79,7 @@ async function main() {
     },
     {
       title: "Prisma & PostgreSQL",
+      category: "DEVELOPMENT",
       description: "Learn database design using Prisma ORM and PostgreSQL.",
       price: 59,
       sections: [
@@ -84,20 +90,9 @@ async function main() {
       ],
     },
     {
-      title: "AWS S3 for Developers",
-      description: "Store and manage files securely using AWS S3.",
-      price: 89,
-      sections: [
-        "AWS Basics",
-        "S3 Fundamentals",
-        "File Uploads",
-        "Production Strategies",
-      ],
-    },
-    {
       title: "Authentication & Security",
-      description:
-        "Build secure applications using JWT, OAuth and RBAC.",
+      category: "DEVELOPMENT",
+      description: "Build secure applications using JWT, OAuth and RBAC.",
       price: 69,
       sections: [
         "Authentication Basics",
@@ -106,14 +101,169 @@ async function main() {
         "Security Best Practices",
       ],
     },
+
+    // --- DESIGN CATEGORY (5 Courses) ---
+    {
+      title: "UI/UX Design Fundamentals",
+      category: "DESIGN",
+      description:
+        "Master the core principles of user interface and user experience design.",
+      price: 49,
+      sections: [
+        "Design Theory",
+        "Wireframing",
+        "Color Psychology",
+        "Typography",
+      ],
+    },
+    {
+      title: "Advanced Figma Prototyping",
+      category: "DESIGN",
+      description: "Create high-fidelity, interactive prototypes using Figma.",
+      price: 89,
+      sections: [
+        "Figma Basics",
+        "Components & Variants",
+        "Auto Layout",
+        "Interactive Prototyping",
+      ],
+    },
+    {
+      title: "Web Design Psychology",
+      category: "DESIGN",
+      description:
+        "Learn how human psychology influences web design and conversions.",
+      price: 59,
+      sections: [
+        "Cognitive Load",
+        "Visual Hierarchy",
+        "F-Pattern & Z-Pattern",
+        "Trust & Credibility",
+      ],
+    },
+    {
+      title: "Mobile App Design Strategies",
+      category: "DESIGN",
+      description:
+        "Design beautiful and intuitive iOS and Android applications.",
+      price: 75,
+      sections: [
+        "Platform Guidelines",
+        "Touch Targets",
+        "Navigation Patterns",
+        "Dark Mode Design",
+      ],
+    },
+    {
+      title: "Creating Design Systems",
+      category: "DESIGN",
+      description:
+        "Build scalable and maintainable design systems for enterprise teams.",
+      price: 120,
+      sections: [
+        "System Architecture",
+        "Design Tokens",
+        "Component Libraries",
+        "Documentation",
+      ],
+    },
+
+    // --- BUSINESS CATEGORY (5 Courses) ---
+    {
+      title: "SaaS Marketing Masterclass",
+      category: "BUSINESS",
+      description:
+        "Learn how to acquire and retain users for your software products.",
+      price: 149,
+      sections: [
+        "Go-to-Market Strategy",
+        "Content Marketing",
+        "Paid Acquisition",
+        "Churn Reduction",
+      ],
+    },
+    {
+      title: "Startup Product Management",
+      category: "BUSINESS",
+      description:
+        "From idea to launch: How to manage software products effectively.",
+      price: 99,
+      sections: [
+        "User Research",
+        "Agile Methodologies",
+        "Roadmapping",
+        "Metrics & KPIs",
+      ],
+    },
+    {
+      title: "Business Analytics with SQL",
+      category: "BUSINESS",
+      description:
+        "Make data-driven business decisions using SQL and BI tools.",
+      price: 85,
+      sections: [
+        "Data Fundamentals",
+        "SQL Queries",
+        "Data Visualization",
+        "Predictive Analytics",
+      ],
+    },
+    {
+      title: "Entrepreneurship 101",
+      category: "BUSINESS",
+      description:
+        "The complete guide to starting and funding your tech startup.",
+      price: 0,
+      sections: [
+        "Validating Ideas",
+        "Business Models",
+        "Raising Capital",
+        "Scaling Operations",
+      ],
+    },
+    {
+      title: "Digital Strategy & Growth",
+      category: "BUSINESS",
+      description: "Scale your online presence and dominate your niche.",
+      price: 65,
+      sections: [
+        "Market Analysis",
+        "SEO Fundamentals",
+        "Social Media Strategy",
+        "Conversion Optimization",
+      ],
+    },
   ];
 
   for (const courseData of courses) {
+    const existingCourse = await prisma.course.findFirst({
+      where: {
+        title: courseData.title,
+      },
+    });
+
+    if (existingCourse) {
+      await prisma.course.update({
+        where: {
+          id: existingCourse.id,
+        },
+        data: {
+          description: courseData.description,
+          price: courseData.price,
+          category: courseData.category as CourseCategory,
+        },
+      });
+
+      console.log(`Updated course: ${courseData.title}`);
+      continue;
+    }
+
     const course = await prisma.course.create({
       data: {
         title: courseData.title,
         description: courseData.description,
         price: courseData.price,
+        category: courseData.category as CourseCategory,
         isPublished: true,
         instructorId: instructor.id,
         thumbnail: THUMBNAIL_URL,
@@ -184,7 +334,11 @@ async function main() {
         ],
       });
     }
+
+    console.log(`Created course: ${courseData.title}`);
   }
+
+  console.log("Database successfully seeded with 15 courses.");
 }
 
 main()

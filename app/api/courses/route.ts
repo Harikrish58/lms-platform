@@ -95,6 +95,7 @@ export async function GET(request: Request) {
       page,
       limit: safeLimit,
       search: searchParams.get("search") || undefined,
+      category: searchParams.get("category") || undefined,
       minPrice: parseNumberParam("minPrice"),
       maxPrice: parseNumberParam("maxPrice"),
       minRating: parseNumberParam("minRating"),

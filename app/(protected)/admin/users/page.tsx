@@ -32,28 +32,31 @@ export default async function AdminUsersPage({ searchParams }: UsersPageProps) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold">Users</h1>
+        <h1 className="text-3xl font-black tracking-tight text-slate-900">
+          Users Management
+        </h1>
 
-        <p className="mt-2 text-sm text-muted-foreground">
-          Manage platform users, roles, and permissions.
+        <p className="mt-2 text-base text-slate-500 max-w-2xl">
+          Manage platform users, assign roles, and monitor account statuses.
         </p>
       </div>
 
       <UserFilters />
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Showing {users.length} of {pagination.totalUsers} users
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+        <p className="text-sm font-bold text-slate-500">
+          Showing <span className="text-slate-900">{users.length}</span> of <span className="text-slate-900">{pagination.totalUsers}</span> users
         </p>
 
-        <p className="text-sm text-muted-foreground">
-          Page {pagination.page} of {pagination.totalPages}
+        <p className="text-sm font-bold text-slate-500">
+          Page <span className="text-slate-900">{pagination.page}</span> of <span className="text-slate-900">{pagination.totalPages}</span>
         </p>
       </div>
 
       <UserTable users={users} />
+      
       <Pagination
         currentPage={pagination.page}
         totalPages={pagination.totalPages}
