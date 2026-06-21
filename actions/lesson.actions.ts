@@ -305,7 +305,7 @@ type GetLessonsBySectionResponse =
         title: string;
         description: string;
         order: number;
-        videoUrl: string;
+        videoUrl: string | null;
         resources?: string | null;
       }[];
     }
