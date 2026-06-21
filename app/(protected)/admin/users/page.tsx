@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 
 import { getUsers } from "@/actions/admin.actions";
 import UserFilters from "@/components/admin/UserFilters";

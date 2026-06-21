@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 
 export const getAdminAnalytics = async () => {
   const [

@@ -1,6 +1,6 @@
 "use client";
 
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

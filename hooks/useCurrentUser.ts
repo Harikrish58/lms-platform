@@ -1,6 +1,6 @@
 "use client";
 
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 import { useQuery } from "@tanstack/react-query";
 
 interface UserProfile {

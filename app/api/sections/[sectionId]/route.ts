@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 import { NextResponse } from "next/server";
 
 import { deleteSection, updateSection } from "@/actions/section.actions";

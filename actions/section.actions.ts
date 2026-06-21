@@ -4,7 +4,7 @@ import {
   ReOrderSectionsSchema,
   UpdateSectionSchema,
 } from "@/schemas/section.Schema";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 
 /**
  * Section Actions

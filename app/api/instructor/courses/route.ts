@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 
 import { getInstructorCourses } from "@/actions/course.actions";
 import { authMiddleware } from "@/lib/middleware/auth";

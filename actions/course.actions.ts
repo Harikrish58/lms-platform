@@ -2,7 +2,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { CourseCategory } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { courseSchema } from "@/schemas/course.schema";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 import { ZodError } from "zod";
 
 /**

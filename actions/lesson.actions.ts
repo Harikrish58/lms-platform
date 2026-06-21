@@ -10,7 +10,7 @@ import {
   ReorderLessonsSchema,
   UpdateLessonSchema,
 } from "@/schemas/lesson.Schema";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 
 /**
  * Lesson Actions

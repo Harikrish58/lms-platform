@@ -1,6 +1,9 @@
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 
-export const requireRole = (userRole: Role | undefined, allowedRoles: Role[]) => {
+export const requireRole = (
+  userRole: Role | undefined,
+  allowedRoles: Role[],
+) => {
   if (!userRole || !allowedRoles.includes(userRole)) {
     return {
       success: false,

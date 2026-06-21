@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma/client";
 
 export type JwtPayload = {
   id: string;
