@@ -13,7 +13,6 @@ import {
   LogOut,
   BookOpen,
   Settings,
-  Bell,
   ChevronDown,
   Loader2,
   Sparkles,
@@ -32,7 +31,6 @@ interface MeResponse {
   data: UserProfile;
 }
 
-// Navigation Constants
 const NAV_LINKS = [{ href: "/courses", label: "Courses" }];
 
 const PROFILE_LINKS = [
@@ -47,12 +45,10 @@ function NavbarContent() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { handleLogout } = useLogout();
 
-  // Initialize navbar search from the current URL if it exists
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // Synchronized authenticated session fetching via TanStack Query
   const { data, isLoading } = useQuery<MeResponse | null>({
     queryKey: ["currentUser"],
     queryFn: async () => {
@@ -68,7 +64,6 @@ function NavbarContent() {
 
   const user = data?.success ? data.data : null;
 
-  // Derived state mappings
   const firstName = user?.name?.split(" ")[0] ?? "";
 
   const currentWorkspace = pathname.startsWith("/admin")
@@ -98,7 +93,6 @@ function NavbarContent() {
     });
   }
 
-  // Handle search submission on desktop and mobile
   const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
@@ -110,17 +104,12 @@ function NavbarContent() {
       params.delete("search");
     }
 
-    // Reset to page 1 during a new search query sequence
     params.delete("page");
 
-    // Redirect straight to the courses overview page with the parameters
     router.push(`/courses?${params.toString()}`);
-
-    // Close mobile menu if open
     setIsMobileMenuOpen(false);
   };
 
-  // Global outside click and escape key tracking
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -151,7 +140,6 @@ function NavbarContent() {
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/90 backdrop-blur-md shadow-sm transition-all duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4 md:gap-8">
         
-        {/* Brand Identity - Logo Image */}
         <Link href="/" className="flex items-center shrink-0 group">
           <div className="relative w-[130px] h-[40px] flex items-center">
             <Image
@@ -164,7 +152,6 @@ function NavbarContent() {
           </div>
         </Link>
 
-        {/* Course Search Bar */}
         <div className="flex-1 max-w-md hidden md:block">
           <form onSubmit={handleSearchSubmit} className="relative group">
             <Search
@@ -177,12 +164,11 @@ function NavbarContent() {
               placeholder="Search premium courses..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm placeholder:text-slate-400 focus:bg-white focus:border-teal-600/30 focus:ring-4 focus:ring-teal-600/5 transition-all duration-200 outline-none"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-600/30 focus:ring-4 focus:ring-teal-600/5 transition-all duration-200 outline-none"
             />
           </form>
         </div>
 
-        {/* Navigation Options Group */}
         <nav className="hidden md:flex items-center gap-2">
           {NAV_LINKS.map((link) => (
             <Link
@@ -198,6 +184,19 @@ function NavbarContent() {
             </Link>
           ))}
 
+          {user && (
+            <Link
+              href="/my-courses"
+              className={`px-3.5 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${
+                pathname === "/my-courses"
+                  ? "text-teal-700 bg-teal-50"
+                  : "text-slate-600 hover:text-teal-600 hover:bg-slate-50"
+              }`}
+            >
+              My Learning
+            </Link>
+          )}
+
           <div className="h-4 w-[1px] bg-slate-200 mx-1" />
 
           {isLoading ? (
@@ -206,17 +205,6 @@ function NavbarContent() {
             </div>
           ) : user ? (
             <div className="flex items-center gap-3.5">
-              {/* Role Based Switch Mode Link */}
-              <button
-                aria-label="Notifications"
-                title="Notifications"
-                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-xl relative transition-all duration-200 cursor-pointer"
-              >
-                <Bell size={19} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
-              </button>
-
-              {/* User Dropdown Profile Workspace Container */}
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsProfileOpen((prev) => !prev)}
@@ -362,7 +350,6 @@ function NavbarContent() {
           )}
         </nav>
 
-        {/* Mobile Menu Action Trigger */}
         <button
           onClick={() => setIsMobileMenuOpen((prev) => !prev)}
           className="md:hidden p-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
@@ -373,10 +360,8 @@ function NavbarContent() {
         </button>
       </div>
 
-      {/* Mobile Menu Overlay Drawer */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-slate-100 bg-white p-5 space-y-4 animate-in slide-in-from-top duration-200">
-          {/* Mobile Search Form Wrapper */}
           <form onSubmit={handleSearchSubmit} className="relative group">
             <Search
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors"

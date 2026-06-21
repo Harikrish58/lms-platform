@@ -10,4 +10,5 @@ export const courseSchema = z.object({
     .min(10, "Description must be at least 10 characters")
     .max(1000, "Description must be less than 1000 characters"),
   price: z.number().min(0, "Price must be a positive number"),
+  thumbnail: z.string().nullable().optional(),
 });

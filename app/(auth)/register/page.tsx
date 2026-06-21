@@ -154,13 +154,13 @@ export default function RegisterPage() {
               
               {/* Global Error */}
               {globalError && (
-                <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-rose-100 bg-rose-50 p-4">
                   <AlertCircle
                     size={18}
                     className="mt-0.5 shrink-0 text-rose-600"
                   />
 
-                  <p className="text-sm font-bold text-rose-800">
+                  <p className="text-sm font-bold text-rose-700">
                     {globalError}
                   </p>
                 </div>
@@ -181,7 +181,7 @@ export default function RegisterPage() {
 
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <User className="h-5 w-5 text-slate-400" />
+                      <User className="h-5 w-5 text-slate-500" />
                     </div>
 
                     <input
@@ -194,7 +194,7 @@ export default function RegisterPage() {
                       {...register("name")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.name
-                          ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                          ? "border-rose-600 focus:border-rose-600 focus:ring-rose-600/20"
                           : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />
@@ -215,7 +215,7 @@ export default function RegisterPage() {
 
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Mail className="h-5 w-5 text-slate-400" />
+                      <Mail className="h-5 w-5 text-slate-500" />
                     </div>
 
                     <input
@@ -228,7 +228,7 @@ export default function RegisterPage() {
                       {...register("email")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.email
-                          ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                          ? "border-rose-600 focus:border-rose-600 focus:ring-rose-600/20"
                           : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />
@@ -249,7 +249,7 @@ export default function RegisterPage() {
 
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Lock className="h-5 w-5 text-slate-400" />
+                      <Lock className="h-5 w-5 text-slate-500" />
                     </div>
 
                     <input
@@ -262,7 +262,7 @@ export default function RegisterPage() {
                       {...register("password")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.password
-                          ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                          ? "border-rose-600 focus:border-rose-600 focus:ring-rose-600/20"
                           : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />
@@ -283,7 +283,7 @@ export default function RegisterPage() {
 
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Lock className="h-5 w-5 text-slate-400" />
+                      <Lock className="h-5 w-5 text-slate-500" />
                     </div>
 
                     <input
@@ -296,7 +296,7 @@ export default function RegisterPage() {
                       {...register("confirmPassword")}
                       className={`block w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm transition-all focus:outline-none focus:ring-4 ${
                         errors.confirmPassword
-                          ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                          ? "border-rose-600 focus:border-rose-600 focus:ring-rose-600/20"
                           : "border-slate-200 focus:border-teal-600 focus:ring-teal-600/20"
                       }`}
                     />

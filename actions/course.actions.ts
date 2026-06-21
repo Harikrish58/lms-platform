@@ -1,4 +1,5 @@
-import { Prisma } from "@/generated/prisma/browser";
+import type { Prisma } from "@/generated/prisma/client";
+import { CourseCategory } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { courseSchema } from "@/schemas/course.schema";
 import { Role } from "@prisma/client";
@@ -55,6 +56,7 @@ type GetCoursesParams = {
   page?: number;
   limit?: number;
   search?: string;
+  category?: string;
   minPrice?: number;
   maxPrice?: number;
   minRating?: number;
@@ -67,6 +69,7 @@ export const getCourses = async ({
   page = 1,
   limit = 10,
   search,
+  category,
   minPrice,
   maxPrice,
   minRating,
@@ -83,6 +86,20 @@ export const getCourses = async ({
         contains: search,
         mode: "insensitive",
       };
+    }
+
+    if (category) {
+      const categoryMap: Record<string, CourseCategory> = {
+        Development: CourseCategory.DEVELOPMENT,
+        Design: CourseCategory.DESIGN,
+        Business: CourseCategory.BUSINESS,
+      };
+
+      const mappedCategory = categoryMap[category];
+
+      if (mappedCategory) {
+        where.category = mappedCategory;
+      }
     }
 
     if (minPrice !== undefined || maxPrice !== undefined) {

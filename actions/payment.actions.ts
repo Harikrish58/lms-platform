@@ -107,7 +107,7 @@ export const createCheckoutSession = async (
       line_items: [
         {
           price_data: {
-            currency: "pln",
+            currency: "eur",
             product_data: {
               name: course.title,
             },
@@ -138,7 +138,7 @@ export const createCheckoutSession = async (
         courseId,
         stripeSessionId: session.id,
         amount: amountInCents,
-        currency: "pln",
+        currency: "eur",
         status: "PENDING",
       },
     });

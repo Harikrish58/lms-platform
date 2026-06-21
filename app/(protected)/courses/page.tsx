@@ -58,6 +58,14 @@ interface QueryState {
   page: number;
 }
 
+const currencyFormatter = new Intl.NumberFormat("de-DE", {
+  style: "currency",
+  currency: "EUR",
+});
+
+const formatCurrency = (amount: number): string =>
+  amount === 0 ? "Free" : currencyFormatter.format(amount);
+
 // Main Courses Marketplace Page handling server-side synced filtering and paginated data fetching
 export default function CoursesPage() {
   const router = useRouter();
@@ -114,12 +122,13 @@ export default function CoursesPage() {
   );
 
   // Core data fetching hook with stale-while-revalidate strategy
-  const { data, isLoading, isFetching, isError, refetch } = useQuery<CoursesResponse>({
-    queryKey: ["courses", queryParams],
-    queryFn: () => getCourses(queryParams),
-    staleTime: 1000 * 60 * 5,
-    placeholderData: (prev) => prev,
-  });
+  const { data, isLoading, isFetching, isError, refetch } =
+    useQuery<CoursesResponse>({
+      queryKey: ["courses", queryParams],
+      queryFn: () => getCourses(queryParams),
+      staleTime: 1000 * 60 * 5,
+      placeholderData: (prev) => prev,
+    });
 
   // Prefetch next page for seamless navigation performance
   useEffect(() => {
@@ -183,7 +192,7 @@ export default function CoursesPage() {
               value={queryState.search}
               onChange={(e) => updateQuery({ search: e.target.value })}
               placeholder="Search for software, skills, or instructors..."
-              className="w-full rounded-lg py-4 pl-12 pr-4 text-lg font-medium text-slate-900 shadow-2xl outline-1 transition-all focus:ring-4 focus:ring-teal-600/20"
+              className="w-full rounded-lg bg-white py-4 pl-12 pr-4 text-lg font-medium text-slate-900 shadow-2xl outline-none transition-all focus:ring-4 focus:ring-teal-600/20"
             />
           </div>
         </div>
@@ -411,7 +420,7 @@ const MemoCourseCard = memo(function CourseCard({
 
         <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
           <span className="text-xl font-black text-slate-900">
-            {course.price === 0 ? "Free" : `$${course.price.toFixed(2)}`}
+            {formatCurrency(course.price)}
           </span>
           <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-tighter text-slate-400">
             <Users size={12} />
