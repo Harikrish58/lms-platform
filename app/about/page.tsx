@@ -1,15 +1,13 @@
 'use client';
 
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
-// ----------------------------------------------------------------
 // Animation configuration
 // Staggered fade-up on mount. All other motion is intentionally
 // removed to keep the page calm and professional.
-// ----------------------------------------------------------------
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -17,18 +15,19 @@ const containerVariants = {
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+    transition: {
+      duration: 0.55,
+      ease: "easeOut",
+    },
   },
 };
 
-// ----------------------------------------------------------------
 // Data: Tech stack entries
-// ----------------------------------------------------------------
 
 const techStack = [
   {
@@ -69,9 +68,7 @@ const techStack = [
   },
 ];
 
-// ----------------------------------------------------------------
 // Data: Architecture portals
-// ----------------------------------------------------------------
 
 const architecture = [
   {
@@ -97,17 +94,13 @@ const architecture = [
   },
 ];
 
-// ----------------------------------------------------------------
 // Root page component
-// ----------------------------------------------------------------
 
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 font-sans">
 
-      {/* -----------------------------------------------------------
-          Header bar: platform identity with a status indicator
-      ----------------------------------------------------------- */}
+      {/* Header bar: platform identity with a status indicator */}
       <header className="border-b border-slate-100 dark:border-slate-800/60">
         <div className="max-w-6xl mx-auto px-6 sm:px-12 lg:px-24 h-14 flex items-center justify-between">
           <span className="text-sm font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-500">
@@ -130,11 +123,9 @@ export default function AboutPage() {
         animate="visible"
       >
 
-        {/* -----------------------------------------------------------
-            Hero: editorial pull-quote treatment.
+        {/* Hero: editorial pull-quote treatment.
             The vertical rule on the left is the signature element —
-            precise, journalistic, specific to the "crafted" narrative.
-        ----------------------------------------------------------- */}
+            precise, journalistic, specific to the "crafted" narrative. */}
         <motion.section
           variants={itemVariants}
           className="grid grid-cols-1 lg:grid-cols-[1fr_1.6fr] gap-12 lg:gap-20 items-start"
@@ -170,11 +161,9 @@ export default function AboutPage() {
           </div>
         </motion.section>
 
-        {/* -----------------------------------------------------------
-            Tech stack: label-and-divider row layout.
+        {/* Tech stack: label-and-divider row layout.
             A clean grid with a category eyebrow above each entry —
-            no icon decorations, no card shadows.
-        ----------------------------------------------------------- */}
+            no icon decorations, no card shadows. */}
         <motion.section variants={itemVariants} className="space-y-10">
 
           {/* Section heading */}
@@ -193,10 +182,8 @@ export default function AboutPage() {
           </div>
         </motion.section>
 
-        {/* -----------------------------------------------------------
-            Architecture: three portals as a ruled list.
-            Each portal has an accent bar, no card shadow or hover lift.
-        ----------------------------------------------------------- */}
+        {/* Architecture: three portals as a ruled list.
+            Each portal has an accent bar, no card shadow or hover lift. */}
         <motion.section variants={itemVariants} className="space-y-10">
 
           {/* Section heading */}
@@ -215,9 +202,7 @@ export default function AboutPage() {
           </div>
         </motion.section>
 
-        {/* -----------------------------------------------------------
-            Footer: minimal sign-off, no card wrapper
-        ----------------------------------------------------------- */}
+        {/* Footer: minimal sign-off, no card wrapper */}
         <motion.section
           variants={itemVariants}
           className="border-t border-slate-100 dark:border-slate-800 pt-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
@@ -236,10 +221,8 @@ export default function AboutPage() {
   );
 }
 
-// ----------------------------------------------------------------
 // TechEntry: a borderless entry with a muted category eyebrow,
 // bold label, and supporting detail. No icon, no card chrome.
-// ----------------------------------------------------------------
 
 function TechEntry({
   category,
@@ -268,12 +251,10 @@ function TechEntry({
   );
 }
 
-// ----------------------------------------------------------------
 // ArchCard: a portal description panel with a colored accent bar
 // at the top and a capability list at the bottom.
 // The first column has no left padding; others get left padding
 // to sit cleanly against the divider line.
-// ----------------------------------------------------------------
 
 function ArchCard({
   portal,
