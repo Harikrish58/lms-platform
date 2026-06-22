@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 
+// Configuration & Types
 const FEATURED_COURSES_LIMIT = 3;
 
 interface Course {
@@ -25,6 +26,7 @@ interface Course {
   };
 }
 
+// Utilities & Formatting
 const currencyFormatter = new Intl.NumberFormat("de-DE", {
   style: "currency",
   currency: "EUR",
@@ -33,6 +35,7 @@ const currencyFormatter = new Intl.NumberFormat("de-DE", {
 const formatCurrency = (amount: number): string =>
   amount === 0 ? "Free" : currencyFormatter.format(amount);
 
+// Static Data: Feature Highlights
 const features = [
   {
     icon: BookOpen,
@@ -54,6 +57,8 @@ const features = [
   },
 ];
 
+// Main Component: Public Landing Page
+// Fetches top featured courses and renders the primary marketing layout.
 export default async function HomePage() {
   let featuredCourses: Course[] = [];
 
@@ -75,6 +80,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-white overflow-hidden">
+      
       {/* Hero Section */}
       <section className="relative isolate bg-slate-900 text-white">
         <div className="absolute inset-0 pointer-events-none">
@@ -119,7 +125,7 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            {/* Stats */}
+            {/* Hero Statistics */}
             <div className="grid grid-cols-3 gap-6 pt-6">
               <div>
                 <h3 className="text-3xl font-black">15K+</h3>
@@ -180,7 +186,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Featured Courses */}
+      {/* Featured Courses Showcase */}
       {featuredCourses.length > 0 && (
         <section className="py-24 px-6 bg-white">
           <div className="max-w-7xl mx-auto">
@@ -267,7 +273,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* CTA Section */}
+      {/* Call to Action (CTA) Section */}
       <section className="px-6 pb-24 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="relative overflow-hidden rounded-[40px] bg-slate-900 px-8 py-20 md:px-16 text-center text-white">
